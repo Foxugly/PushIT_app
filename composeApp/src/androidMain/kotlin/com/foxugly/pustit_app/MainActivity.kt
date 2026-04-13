@@ -4,22 +4,22 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.tooling.preview.Preview
+import com.foxugly.pustit_app.data.storage.TokenStorage
+import com.foxugly.pustit_app.platform.FcmTokenProvider
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
+        val tokenStorage = TokenStorage(this)
+        val fcmTokenProvider = FcmTokenProvider.instance
+
         setContent {
-            App()
+            App(
+                tokenStorage = tokenStorage,
+                fcmTokenProvider = fcmTokenProvider,
+            )
         }
     }
-}
-
-@Preview
-@Composable
-fun AppAndroidPreview() {
-    App()
 }
