@@ -1,66 +1,57 @@
-This is a Kotlin Multiplatform project targeting Android, iOS, Web.
+# PushIT App
 
-* [/composeApp](./composeApp/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-    - [commonMain](./composeApp/src/commonMain/kotlin) is for code that’s common for all targets.
-    - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-      For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-      the [iosMain](./composeApp/src/iosMain/kotlin) folder would be the right place for such calls.
-      Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./composeApp/src/jvmMain/kotlin)
-      folder is the appropriate location.
+Kotlin Multiplatform mobile client for PushIT Server — receives push notifications via Firebase Cloud Messaging.
 
-* [/iosApp](./iosApp/iosApp) contains iOS applications. Even if you’re sharing your UI with Compose Multiplatform,
-  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
+## Platforms
 
-### Build and Run Android Application
+- Android (Jetpack Compose)
+- iOS (SwiftUI + Compose Multiplatform)
 
-To build and run the development version of the Android app, use the run configuration from the run widget
-in your IDE’s toolbar or build it directly from the terminal:
+## Setup
 
-- on macOS/Linux
-  ```shell
-  ./gradlew :composeApp:assembleDebug
-  ```
-- on Windows
-  ```shell
-  .\gradlew.bat :composeApp:assembleDebug
-  ```
+### Prerequisites
 
-### Build and Run Web Application
+- Android Studio / IntelliJ IDEA with KMP plugin
+- Xcode (for iOS)
+- A running PushIT Server instance
+- Firebase project (shared with the backend)
 
-To build and run the development version of the web app, use the run configuration from the run widget
-in your IDE's toolbar or run it directly from the terminal:
+### Firebase Configuration
 
-- for the Wasm target (faster, modern browsers):
-    - on macOS/Linux
-      ```shell
-      ./gradlew :composeApp:wasmJsBrowserDevelopmentRun
-      ```
-    - on Windows
-      ```shell
-      .\gradlew.bat :composeApp:wasmJsBrowserDevelopmentRun
-      ```
-- for the JS target (slower, supports older browsers):
-    - on macOS/Linux
-      ```shell
-      ./gradlew :composeApp:jsBrowserDevelopmentRun
-      ```
-    - on Windows
-      ```shell
-      .\gradlew.bat :composeApp:jsBrowserDevelopmentRun
-      ```
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Select the same project used by your PushIT Server
+3. **Android:** Download `google-services.json` and place it in `composeApp/` (replacing the placeholder)
+4. **iOS:** Download `GoogleService-Info.plist` and place it in `iosApp/iosApp/`. Add Firebase iOS SDK via CocoaPods or Swift Package Manager in Xcode.
 
-### Build and Run iOS Application
+### Backend URL
 
-To build and run the development version of the iOS app, use the run configuration from the run widget
-in your IDE’s toolbar or open the [/iosApp](./iosApp) directory in Xcode and run it from there.
+The default API base URL is `http://10.0.2.2:8000/api/v1/` (Android emulator to host localhost).
 
----
+For physical devices or different environments, update the `baseUrl` parameter in `PushItApi.kt`.
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html),
-[Compose Multiplatform](https://github.com/JetBrains/compose-multiplatform/#compose-multiplatform),
-[Kotlin/Wasm](https://kotl.in/wasm/)…
+### Build & Run
 
-We would appreciate your feedback on Compose/Web and Kotlin/Wasm in the public Slack
-channel [#compose-web](https://slack-chats.kotlinlang.org/c/compose-web).
-If you face any issues, please report them on [YouTrack](https://youtrack.jetbrains.com/newIssue?project=CMP).
+**Android:**
+```bash
+./gradlew :composeApp:assembleDebug
+# Or use the run configuration in your IDE
+```
+
+**iOS:**
+Open `iosApp/` in Xcode and run.
+
+**Tests:**
+```bash
+./gradlew :composeApp:testDebugUnitTest
+```
+
+## Usage
+
+1. Register or login with your PushIT Server credentials
+2. Scan the QR code containing your application's `apt_` token (found in the PushIT dashboard)
+3. The app registers your device for push notifications automatically
+4. Incoming notifications appear in the notification list
+
+## Architecture
+
+Single `composeApp` KMP module with shared Compose Multiplatform UI. Platform-specific code (FCM, QR scanner, encrypted storage) via `expect/actual` in `androidMain`/`iosMain`. State-driven navigation, Ktor networking, kotlinx.serialization.

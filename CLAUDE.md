@@ -30,7 +30,7 @@ Single-module KMP project (`composeApp`) with shared Compose UI. No separate `sh
 
 - **commonMain** — all shared code: Ktor networking, data models, ViewModels, Compose UI screens
 - **androidMain** — Android platform specifics: `MainActivity`, Firebase `FirebaseMessagingService`, CameraX + ML Kit QR scanner, `EncryptedSharedPreferences` for token storage
-- **iosMain** — iOS platform specifics: `MainViewController`, FCM token handling, AVFoundation QR scanner, Keychain for token storage
+- **iosMain** — iOS platform specifics: `MainViewController`, FCM token handling, QR scanner (manual entry fallback), NSUserDefaults for token storage
 - **iosApp/** — SwiftUI entry point that hosts the Compose view via `ComposeView` (UIViewControllerRepresentable)
 
 ### Platform Boundaries (expect/actual)
@@ -46,7 +46,7 @@ State-driven manual navigation using `sealed class Screen` + `when` in the root 
 
 ### Backend API
 
-Base URL: `http://127.0.0.1:8000/api/v1/` (PushIT Server)
+Base URL: `http://10.0.2.2:8000/api/v1/` (Android emulator → localhost). Configurable in `PushItApi.kt`.
 
 - JWT auth: login, register, refresh, logout, me
 - Device registration: `POST /devices/link/` with `X-App-Token` header
@@ -56,7 +56,7 @@ Base URL: `http://127.0.0.1:8000/api/v1/` (PushIT Server)
 
 - **Ktor** — HTTP client (KMP-compatible)
 - **kotlinx.serialization** — JSON serialization
-- **multiplatform-settings** — encrypted token storage
+- **EncryptedSharedPreferences** (Android) / **NSUserDefaults** (iOS) — token storage
 - **Compose Multiplatform 1.10.3** / **Kotlin 2.3.20**
 
 ## Gradle
