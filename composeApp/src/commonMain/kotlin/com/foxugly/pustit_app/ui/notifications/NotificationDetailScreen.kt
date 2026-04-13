@@ -3,6 +3,8 @@ package com.foxugly.pustit_app.ui.notifications
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -44,7 +46,7 @@ fun NotificationDetailScreen(
                 title = { Text("Notification") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Text(text = "\u2190", style = MaterialTheme.typography.titleLarge)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
             )

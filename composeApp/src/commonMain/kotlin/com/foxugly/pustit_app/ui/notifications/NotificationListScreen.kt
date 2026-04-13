@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -85,7 +87,7 @@ fun NotificationListScreen(
                 title = { Text("Notifications") },
                 actions = {
                     IconButton(onClick = onNavigateToSettings) {
-                        Text(text = "\u2699", style = MaterialTheme.typography.titleLarge)
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
                 },
             )
