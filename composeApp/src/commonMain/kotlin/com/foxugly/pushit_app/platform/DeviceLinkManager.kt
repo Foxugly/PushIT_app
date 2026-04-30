@@ -1,0 +1,139 @@
+package com.foxugly.pushit_app.platform
+
+import com.foxugly.pushit_app.data.api.DeviceIdentifyRequest
+import com.foxugly.pushit_app.data.api.DeviceIdentifyResponse
+import com.foxugly.pushit_app.data.api.DeviceLinkRequest
+import com.foxugly.pushit_app.data.api.LinkedApplication
+import com.foxugly.pushit_app.data.api.PushItApi
+import com.foxugly.pushit_app.data.storage.TokenStorage
+import com.foxugly.pushit_app.diagnostics.AppLogger
+import com.foxugly.pushit_app.getPlatform
+
+data class DeviceConnectionState(
+    val deviceId: Int,
+    val linkedApplications: List<LinkedApplication>,
+    val linkCreated: Boolean = false,
+)
+
+class DeviceLinkManager(
+    private val api: PushItApi,
+    private val tokenStorage: TokenStorage,
+    private val fcmTokenProvider: FcmTokenProvider,
+) {
+    private val tag = "PushIT/DeviceLink"
+    private var lastLinkedFcmToken: String? = null
+    private var lastLinkedAppToken: String? = null
+
+    suspend fun identify(): Result<DeviceIdentifyResponse?> {
+        tokenStorage.getAccessToken() ?: run {
+            AppLogger.info(tag, "Device identify skipped: no access token")
+            return Result.success(null)
+        }
+        val fcmToken = fcmTokenProvider.getCurrentToken() ?: run {
+            AppLogger.warn(tag, "Device identify skipped: no FCM token yet")
+            return Result.success(null)
+        }
+
+        val platform = getPlatform()
+        AppLogger.info(tag, "Identifying device platform=${platform.platformType} name=${platform.deviceName}")
+        return api.identifyDevice(
+            DeviceIdentifyRequest(
+                pushToken = fcmToken,
+                platform = platform.platformType,
+                deviceName = platform.deviceName,
+            )
+        ).onSuccess {
+            AppLogger.info(
+                tag,
+                "Device identified id=${it.deviceId} deviceCreated=${it.deviceCreated} linkedApps=${it.linkedApplications.size}",
+            )
+        }.onFailure {
+            AppLogger.error(tag, "Device identify failed: ${it.message}", it)
+        }
+    }
+
+    suspend fun syncAuthenticatedDevice(): Result<DeviceConnectionState?> {
+        val identifyResult = identify()
+        if (identifyResult.isFailure) {
+            return identifyResult.map { null }
+        }
+        val identified = identifyResult.getOrNull() ?: return Result.success(null)
+        val appToken = tokenStorage.getAppToken()
+        if (appToken == null) {
+            AppLogger.info(tag, "Device link skipped: no app token")
+            return Result.success(
+                DeviceConnectionState(
+                    deviceId = identified.deviceId,
+                    linkedApplications = identified.linkedApplications,
+                )
+            )
+        }
+        return linkWithAppToken(appToken, identified)
+    }
+
+    suspend fun linkWithStoredAppToken(): Result<DeviceConnectionState?> {
+        val appToken = tokenStorage.getAppToken() ?: run {
+            AppLogger.info(tag, "Device link skipped: no app token")
+            return Result.success(null)
+        }
+        return linkWithAppToken(appToken, existingIdentify = null)
+    }
+
+    private suspend fun linkWithAppToken(
+        appToken: String,
+        existingIdentify: DeviceIdentifyResponse?,
+    ): Result<DeviceConnectionState?> {
+        tokenStorage.getAccessToken() ?: run {
+            AppLogger.info(tag, "Device link skipped: no access token")
+            return Result.success(null)
+        }
+        val fcmToken = fcmTokenProvider.getCurrentToken() ?: run {
+            AppLogger.warn(tag, "Device link skipped: no FCM token yet")
+            return Result.success(null)
+        }
+        if (fcmToken == lastLinkedFcmToken && appToken == lastLinkedAppToken) {
+            AppLogger.info(tag, "Device link skipped: token pair already linked")
+            return Result.success(
+                existingIdentify?.let {
+                    DeviceConnectionState(
+                        deviceId = it.deviceId,
+                        linkedApplications = it.linkedApplications,
+                    )
+                }
+            )
+        }
+
+        val platform = getPlatform()
+        AppLogger.info(tag, "Linking device platform=${platform.platformType} name=${platform.deviceName}")
+        val result = api.linkDevice(
+            DeviceLinkRequest(
+                appToken = appToken,
+                pushToken = fcmToken,
+                platform = platform.platformType,
+                deviceName = platform.deviceName,
+            )
+        )
+
+        return result.map {
+            lastLinkedFcmToken = fcmToken
+            lastLinkedAppToken = appToken
+            AppLogger.info(tag, "Device linked id=${it.deviceId} deviceCreated=${it.deviceCreated} linkCreated=${it.linkCreated}")
+            val refreshedLinks = identify().getOrNull()?.linkedApplications ?: existingIdentify?.linkedApplications.orEmpty()
+            DeviceConnectionState(
+                deviceId = it.deviceId,
+                linkedApplications = refreshedLinks,
+                linkCreated = it.linkCreated,
+            )
+        }.onFailure {
+            AppLogger.error(tag, "Device link failed: ${it.message}", it)
+        }
+    }
+
+    fun startObservingTokenChanges(onLink: (Result<Boolean>) -> Unit) {
+        fcmTokenProvider.observeTokenChanges { newToken ->
+            AppLogger.info(tag, "Observed FCM token change")
+            lastLinkedFcmToken = null
+            onLink(Result.success(false))
+        }
+    }
+}
