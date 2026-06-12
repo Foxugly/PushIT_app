@@ -1,6 +1,6 @@
 package com.foxugly.pushit_app.data.api
 
-import com.foxugly.pushit_app.data.storage.TokenStorage
+import com.foxugly.pushit_app.data.storage.TokenStore
 import com.foxugly.pushit_app.diagnostics.AppLogger
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -13,7 +13,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 
 class AuthInterceptor(
-    private val tokenStorage: TokenStorage,
+    private val tokenStorage: TokenStore,
     private val json: Json,
     var onAuthFailure: (() -> Unit)? = null,
 ) {
@@ -34,18 +34,28 @@ class AuthInterceptor(
         }
     }
 
-    suspend fun handleUnauthorized(
-        client: HttpClient,
-        originalRequest: HttpRequestBuilder,
-        response: HttpResponse,
-    ): HttpResponse {
-        if (response.status != HttpStatusCode.Unauthorized) return response
-
-        val newAccessToken = refreshMutex.withLock {
+    /**
+     * Refresh the access token after a 401, then signal the caller to REPLAY its
+     * original request (the caller re-runs its own request lambda, so the verb,
+     * body and headers are preserved — the interceptor re-attaches the fresh
+     * token via [plugin]). Returns true if a usable access token is now in place.
+     *
+     * [staleAccessToken] is the token that was on the failed request. Under the
+     * mutex we first check whether a concurrent caller already refreshed (current
+     * token differs from the stale one): if so we skip a redundant — and with
+     * refresh-token rotation, failure-prone — second `auth/refresh/` round-trip.
+     */
+    suspend fun refreshIfNeeded(client: HttpClient, staleAccessToken: String?): Boolean =
+        refreshMutex.withLock {
+            val current = tokenStorage.getAccessToken()
+            if (current != null && current != staleAccessToken) {
+                AppLogger.info(tag, "Access token already refreshed by a concurrent call; reusing it")
+                return@withLock true
+            }
             val refreshToken = tokenStorage.getRefreshToken() ?: run {
                 AppLogger.warn(tag, "Unauthorized response and no refresh token available")
                 onAuthFailure?.invoke()
-                return response
+                return@withLock false
             }
             try {
                 AppLogger.info(tag, "Refreshing access token after HTTP 401")
@@ -54,28 +64,20 @@ class AuthInterceptor(
                     setBody(RefreshRequest(refreshToken))
                 }
                 if (refreshResponse.status == HttpStatusCode.OK) {
-                    val body = refreshResponse.body<RefreshResponse>()
-                    tokenStorage.setAccessToken(body.access)
+                    tokenStorage.setAccessToken(refreshResponse.body<RefreshResponse>().access)
                     AppLogger.info(tag, "Access token refresh succeeded")
-                    body.access
+                    true
                 } else {
                     AppLogger.warn(tag, "Access token refresh failed with HTTP ${refreshResponse.status.value}")
                     tokenStorage.clearAuthTokens()
                     onAuthFailure?.invoke()
-                    null
+                    false
                 }
             } catch (e: Exception) {
                 AppLogger.error(tag, "Access token refresh threw an exception", e)
                 tokenStorage.clearAuthTokens()
                 onAuthFailure?.invoke()
-                null
+                false
             }
-        } ?: return response
-
-        return client.request {
-            takeFrom(originalRequest)
-            headers.remove(HttpHeaders.Authorization)
-            headers.append(HttpHeaders.Authorization, "Bearer $newAccessToken")
         }
-    }
 }

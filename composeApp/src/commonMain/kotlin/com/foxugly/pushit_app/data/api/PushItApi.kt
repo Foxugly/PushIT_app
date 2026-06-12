@@ -1,9 +1,12 @@
 package com.foxugly.pushit_app.data.api
 
 import com.foxugly.pushit_app.diagnostics.AppLogger
-import com.foxugly.pushit_app.data.storage.TokenStorage
+import com.foxugly.pushit_app.data.storage.TokenStore
 import io.ktor.client.*
 import io.ktor.client.call.*
+import io.ktor.client.engine.HttpClientEngine
+import io.ktor.client.network.sockets.ConnectTimeoutException
+import io.ktor.client.network.sockets.SocketTimeoutException
 import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.logging.*
@@ -11,22 +14,35 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import io.ktor.utils.io.errors.IOException
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 class PushItApi(
-    private val tokenStorage: TokenStorage,
-    baseUrl: String = "http://10.0.2.2:8000/api/v1/",
-) {
+    private val tokenStorage: TokenStore,
+    baseUrl: String = "https://pushit-api.foxugly.com/api/v1/",
+    enableLogging: Boolean = false,
+    // Tests inject a MockEngine here; production passes null (default engine).
+    engine: HttpClientEngine? = null,
+) : AutoCloseable {
     private val tag = "PushIT/Api"
 
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
+        // Omit null properties on encode (e.g. an absent turnstile_token) so we
+        // never send `"field": null` to DRF, which rejects null on non-null fields.
+        explicitNulls = false
     }
 
     private val authInterceptor = AuthInterceptor(tokenStorage, json)
 
-    val client = HttpClient {
+    private val clientConfig: HttpClientConfig<*>.() -> Unit = {
         install(ContentNegotiation) {
             json(this@PushItApi.json)
         }
@@ -45,10 +61,18 @@ class PushItApi(
                     AppLogger.debug(tag, message)
                 }
             }
-            level = LogLevel.INFO
+            // Off in release: even at INFO Ktor only logs request/response lines,
+            // but production builds should not emit endpoint traffic to the log.
+            level = if (enableLogging) LogLevel.INFO else LogLevel.NONE
             sanitizeHeader { header -> header == HttpHeaders.Authorization }
         }
         install(authInterceptor.plugin)
+    }
+
+    val client = if (engine != null) HttpClient(engine, clientConfig) else HttpClient(clientConfig)
+
+    override fun close() {
+        client.close()
     }
 
     var onAuthFailure: (() -> Unit)?
@@ -105,26 +129,43 @@ class PushItApi(
     // --- Helpers ---
     private suspend inline fun <reified T> apiCall(
         crossinline block: suspend () -> HttpResponse,
-    ): Result<T> = runCatching {
+    ): Result<T> = runCatching<T> {
+        val name = T::class.simpleName ?: "unknown"
+        // Token on the request we're about to make — passed to the refresh guard
+        // so concurrent 401s don't each re-POST auth/refresh/.
+        val staleAccessToken = tokenStorage.getAccessToken()
         val response = block()
-        logResponse(T::class.simpleName ?: "unknown", response)
-        if (!response.status.isSuccess() && response.status != HttpStatusCode.Unauthorized) {
-            throw response.toApiException(T::class.simpleName ?: "unknown")
-        }
+        logResponse(name, response)
         if (response.status == HttpStatusCode.Unauthorized) {
             AppLogger.warn(tag, "Unauthorized response received, attempting token refresh")
-            val retried = authInterceptor.handleUnauthorized(
-                client,
-                HttpRequestBuilder().apply { url(response.request.url.toString()) },
-                response,
-            )
-            logResponse("retry ${T::class.simpleName ?: "unknown"}", retried)
-            if (!retried.status.isSuccess()) {
-                throw retried.toApiException("retry ${T::class.simpleName ?: "unknown"}")
+            if (!authInterceptor.refreshIfNeeded(client, staleAccessToken)) {
+                throw response.toApiException("auth $name")
             }
-            retried.body<T>()
+            // Replay the ORIGINAL request: same verb + body, fresh token attached
+            // by the AuthInterceptor's onRequest. (The old code rebuilt a bare GET
+            // with no body, breaking every POST that hit a 401.)
+            val retried = block()
+            logResponse("retry $name", retried)
+            if (!retried.status.isSuccess()) {
+                throw retried.toApiException("retry $name")
+            }
+            retried.decodeBody<T>(name, json)
         } else {
-            response.body<T>()
+            if (!response.status.isSuccess()) {
+                throw response.toApiException(name)
+            }
+            response.decodeBody<T>(name, json)
+        }
+    }.recoverCatching { throwable ->
+        // Surface transport failures as NetworkException so the UI can tell
+        // "offline / timed out" apart from an HTTP or decoding error. Re-throwing
+        // keeps the Result a failure (recoverCatching wraps the thrown value).
+        throw when (throwable) {
+            is HttpRequestTimeoutException,
+            is ConnectTimeoutException,
+            is SocketTimeoutException -> NetworkException("The request timed out.", throwable)
+            is IOException -> NetworkException("Could not reach the server.", throwable)
+            else -> throwable
         }
     }.onFailure {
         AppLogger.error(tag, "API call failed: ${it.message}", it)
@@ -138,12 +179,80 @@ class PushItApi(
     }
 
     private suspend fun HttpResponse.toApiException(operation: String): ApiException {
-        val errorBody = runCatching { bodyAsText().take(500) }.getOrDefault("")
+        val errorBody = runCatching { bodyAsText() }.getOrDefault("")
         return ApiException(
             statusCode = status.value,
             operation = operation,
-            responseBody = errorBody,
+            responseBody = formatApiErrorBody(errorBody),
         )
+    }
+}
+
+private suspend inline fun <reified T> HttpResponse.decodeBody(operation: String, json: Json): T {
+    val rawBody = bodyAsText()
+    // A 204 / empty body for a Unit-returning call is success, not a decode error.
+    if (rawBody.isBlank() && T::class == Unit::class) {
+        @Suppress("UNCHECKED_CAST")
+        return Unit as T
+    }
+    return try {
+        json.decodeFromString<T>(rawBody)
+    } catch (cause: SerializationException) {
+        throw ResponseDecodingException(
+            operation = operation,
+            statusCode = status.value,
+            responseBody = rawBody.take(500),
+            cause = cause,
+        )
+    }
+}
+
+internal fun formatApiErrorBody(rawBody: String): String {
+    if (rawBody.isBlank()) return ""
+
+    val parsed = runCatching { Json.parseToJsonElement(rawBody) }.getOrNull()
+    if (parsed == null) return rawBody.take(500)
+
+    val messages = linkedSetOf<String>()
+    collectApiMessages(parsed, messages)
+    return if (messages.isEmpty()) rawBody.take(500) else messages.joinToString(" | ").take(500)
+}
+
+private fun collectApiMessages(element: JsonElement, messages: MutableSet<String>) {
+    when (element) {
+        is JsonObject -> {
+            element["detail"]?.let { collectApiMessages(it, messages) }
+            element["code"]?.let { collectApiMessages(it, messages) }
+            element["errors"]?.let { collectApiMessages(it, messages) }
+            element.forEach { (key, value) ->
+                if (key !in setOf("detail", "code", "errors")) {
+                    collectNamedMessages(key, value, messages)
+                }
+            }
+        }
+        is JsonArray -> element.forEach { collectApiMessages(it, messages) }
+        is JsonPrimitive -> element.contentOrNull
+            ?.takeIf { it.isNotBlank() }
+            ?.let(messages::add)
+    }
+}
+
+private fun collectNamedMessages(name: String, element: JsonElement, messages: MutableSet<String>) {
+    when (element) {
+        is JsonPrimitive -> element.contentOrNull
+            ?.takeIf { it.isNotBlank() }
+            ?.let { messages.add("$name: $it") }
+        is JsonArray -> {
+            val values = element.mapNotNull { (it as? JsonPrimitive)?.contentOrNull?.takeIf(String::isNotBlank) }
+            if (values.isNotEmpty()) {
+                messages.add("$name: ${values.joinToString(", ")}")
+            } else {
+                element.forEach { collectApiMessages(it, messages) }
+            }
+        }
+        is JsonObject -> element.forEach { (childName, childValue) ->
+            collectNamedMessages("$name.$childName", childValue, messages)
+        }
     }
 }
 
@@ -159,4 +268,29 @@ class ApiException(
             append(responseBody)
         }
     }
+)
+
+/** A transport-level failure (offline, DNS, timeout) — distinct from an HTTP
+ * status error ([ApiException]) so the UI can show "check your connection". */
+class NetworkException(
+    message: String,
+    cause: Throwable,
+) : Exception(message, cause)
+
+class ResponseDecodingException(
+    val statusCode: Int,
+    operation: String,
+    responseBody: String,
+    cause: Throwable,
+) : Exception(
+    buildString {
+        append("API ")
+        append(operation)
+        append(" returned an unexpected response")
+        if (responseBody.isNotBlank()) {
+            append(": ")
+            append(responseBody)
+        }
+    },
+    cause,
 )

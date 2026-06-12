@@ -1,5 +1,6 @@
 package com.foxugly.pushit_app.data.api
 
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -15,7 +16,7 @@ class ModelsTest {
             {
                 "access": "eyJ...",
                 "refresh": "eyR...",
-                "user": {"id": 1, "email": "test@example.com", "username": "testuser"}
+                "user": {"id": 1, "email": "test@example.com", "userkey": "u-abc", "is_active": true, "language": "fr"}
             }
         """.trimIndent()
         val result = json.decodeFromString<LoginResponse>(raw)
@@ -23,7 +24,29 @@ class ModelsTest {
         assertEquals("eyR...", result.refresh)
         assertEquals(1, result.user.id)
         assertEquals("test@example.com", result.user.email)
-        assertEquals("testuser", result.user.username)
+        assertEquals("u-abc", result.user.userkey)
+    }
+
+    @Test
+    fun userProfileDeserializesWithoutUsername() {
+        // Regression guard: the server dropped `username` from /me/ and the login
+        // user payload. UserProfile must decode without it (it used to be a
+        // required non-null field → SerializationException on every real call).
+        val raw = """{"id": 7, "email": "a@b.test", "userkey": "k", "is_active": true, "language": "en"}"""
+        val result = json.decodeFromString<UserProfile>(raw)
+        assertEquals(7, result.id)
+        assertEquals("a@b.test", result.email)
+        assertEquals("k", result.userkey)
+    }
+
+    @Test
+    fun registerRequestOmitsNullTurnstileToken() {
+        // With explicitNulls=false the absent captcha token must NOT be serialized
+        // (DRF rejects an explicit null on the non-null turnstile_token field).
+        val encoder = Json { encodeDefaults = true; explicitNulls = false }
+        val body = encoder.encodeToString(RegisterRequest(email = "a@b.test", password = "secret123"))
+        assertTrue(!body.contains("turnstile_token"), "null turnstile_token must be omitted: $body")
+        assertTrue(!body.contains("username"), "username is no longer part of the contract: $body")
     }
 
     @Test
@@ -137,5 +160,26 @@ class ModelsTest {
         """.trimIndent()
         val result = json.decodeFromString<LoginResponse>(raw)
         assertEquals("a", result.access)
+    }
+
+    @Test
+    fun apiErrorFormattingExtractsUsefulMessages() {
+        val raw = """
+            {
+                "errors": {
+                    "email": ["This field is required."],
+                    "password": ["Too short."]
+                },
+                "code": "validation_error",
+                "detail": "Invalid input."
+            }
+        """.trimIndent()
+
+        val result = formatApiErrorBody(raw)
+
+        assertTrue(result.contains("Invalid input."))
+        assertTrue(result.contains("validation_error"))
+        assertTrue(result.contains("email: This field is required."))
+        assertTrue(result.contains("password: Too short."))
     }
 }

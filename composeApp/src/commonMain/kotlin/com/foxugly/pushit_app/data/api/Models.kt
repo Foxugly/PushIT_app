@@ -21,8 +21,11 @@ data class LoginResponse(
 @Serializable
 data class RegisterRequest(
     val email: String,
-    val username: String,
     val password: String,
+    // Cloudflare Turnstile token. The backend only enforces it when Turnstile is
+    // enabled server-side; the mobile client has no captcha widget, so this stays
+    // null today (omitted from the body via explicitNulls=false). See PushItApi.json.
+    @SerialName("turnstile_token") val turnstileToken: String? = null,
 )
 
 @Serializable
@@ -39,7 +42,6 @@ data class RefreshResponse(
 data class UserProfile(
     val id: Int,
     val email: String,
-    val username: String,
     val userkey: String? = null,
     @SerialName("is_active") val isActive: Boolean? = null,
     val language: String? = null,

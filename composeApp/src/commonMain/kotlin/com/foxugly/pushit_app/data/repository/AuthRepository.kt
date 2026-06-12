@@ -2,11 +2,11 @@ package com.foxugly.pushit_app.data.repository
 
 import com.foxugly.pushit_app.data.api.*
 import com.foxugly.pushit_app.diagnostics.AppLogger
-import com.foxugly.pushit_app.data.storage.TokenStorage
+import com.foxugly.pushit_app.data.storage.TokenStore
 
 class AuthRepository(
     private val api: PushItApi,
-    private val tokenStorage: TokenStorage,
+    private val tokenStorage: TokenStore,
 ) {
     private val tag = "PushIT/AuthRepository"
 
@@ -22,11 +22,11 @@ class AuthRepository(
         }
     }
 
-    suspend fun register(email: String, username: String, password: String): Result<UserProfile> {
-        AppLogger.info(tag, "Register requested for email=$email username=$username")
-        val registerResult = api.register(RegisterRequest(email, username, password))
+    suspend fun register(email: String, password: String): Result<UserProfile> {
+        AppLogger.info(tag, "Register requested")
+        val registerResult = api.register(RegisterRequest(email = email, password = password))
         if (registerResult.isFailure) {
-            AppLogger.error(tag, "Register failed for email=$email", registerResult.exceptionOrNull())
+            AppLogger.error(tag, "Register failed", registerResult.exceptionOrNull())
             return registerResult
         }
         return login(email, password)
