@@ -2,8 +2,8 @@
 
 Backlog issu de l'audit complet du 2026-06-12 (sécurité, réseau/API, archi/UI, code
 plateforme Android/iOS, build/tests/hygiène). Sévérités : **P0** bloquant · **P1** important ·
-**P2/P3** à nettoyer. Les items cochés ont été traités le 2026-06-12 (non commités — le repo
-n'a pas encore de remote `Foxugly/PushIT_frontend`).
+**P2/P3** à nettoyer. Tout le travail coché est commité et poussé sur **`Foxugly/PushIT_app`**
+(public, branche `main`, CI verte).
 
 ---
 
