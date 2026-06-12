@@ -7,7 +7,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -110,11 +109,12 @@ fun LoginScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            // Original Foxugly navy (#1b1a30, baked into the vector) — the app is
+            // light-only today so it reads fine; revisit if dark mode is added.
             Image(
                 painter = painterResource(Res.drawable.foxugly_logo),
                 contentDescription = null,
                 modifier = Modifier.height(18.dp),
-                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
             )
             Spacer(Modifier.width(4.dp))
             Text(
