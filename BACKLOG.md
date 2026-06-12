@@ -113,11 +113,12 @@ n'a pas encore de remote `Foxugly/PushIT_frontend`).
 
 ## ⚠️ Actions hors-code (Renaud)
 
-- [ ] **Restreindre la clé API Firebase dans GCP** — restrictions application (package + SHA-1) +
-  restriction d'API (FCM/Firebase uniquement). *Recommandé même si la clé n'a JAMAIS atteint GitHub
-  (`google-services.json` a été scrubé de l'historique avant le 1er push) : une clé Android Firebase est
-  de toute façon extractible de l'APK distribué, la sécurité vient des restrictions GCP, pas du secret.*
-  → Régénération non nécessaire ; la restriction suffit.
+- [ ] **Restreindre la clé API Firebase dans GCP** *(EN COURS — fait via la console GCP, projet `pushit-dcf8a`)* :
+  - Restriction application → Android : package `com.foxugly.pushit_app` + SHA-1 **debug**
+    `5E:13:E7:0A:58:5F:F4:50:E1:9B:66:46:32:5D:1E:0C:CB:35:25:8B`.
+  - Restriction d'API : Firebase Installations API + Firebase Cloud Messaging API (+ Cloud Messaging).
+  - **À compléter au moment de la signature release** : ajouter le SHA-1 du keystore *release* (sinon FCM
+    cassé sur l'app publiée). Régénération de la clé non nécessaire (jamais atteint GitHub).
 - [ ] **(optionnel) Activer le build APK en CI** — ajouter le secret `GOOGLE_SERVICES_JSON_B64`
   (base64 de `androidApp/google-services.json`) + la variable repo `HAS_FIREBASE_SECRET=true`. Sans ça, le
   job `build-debug-apk` de `.github/workflows/ci.yml` reste skippé (le job `test` tourne sans secret).
