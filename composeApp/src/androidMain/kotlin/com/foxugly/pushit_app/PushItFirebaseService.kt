@@ -10,6 +10,7 @@ import com.foxugly.pushit_app.diagnostics.AppLogger
 import com.foxugly.pushit_app.platform.FcmTokenProvider
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import kotlin.concurrent.Volatile
 
 class PushItFirebaseService : FirebaseMessagingService() {
 
@@ -28,17 +29,20 @@ class PushItFirebaseService : FirebaseMessagingService() {
         val title = message.notification?.title ?: message.data["title"] ?: "PushIT"
         val body = message.notification?.body ?: message.data["message"] ?: ""
         showNotification(title, body)
-        sendBroadcast(Intent(ACTION_NOTIFICATION_RECEIVED))
+        // Keep the refresh broadcast inside our own package (it is only consumed
+        // by MainActivity's RECEIVER_NOT_EXPORTED receiver).
+        sendBroadcast(Intent(ACTION_NOTIFICATION_RECEIVED).setPackage(packageName))
     }
 
     private fun showNotification(title: String, body: String) {
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !channelCreated) {
             val channel = NotificationChannel(
                 CHANNEL_ID, "PushIT Notifications", NotificationManager.IMPORTANCE_DEFAULT
             )
             notificationManager.createNotificationChannel(channel)
+            channelCreated = true
         }
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
@@ -56,5 +60,10 @@ class PushItFirebaseService : FirebaseMessagingService() {
         private const val TAG = "PushIT/FirebaseService"
         const val CHANNEL_ID = "pushit_notifications"
         const val ACTION_NOTIFICATION_RECEIVED = "com.foxugly.pushit_app.NOTIFICATION_RECEIVED"
+
+        // The channel is process-global; create it at most once instead of on
+        // every received message.
+        @Volatile
+        private var channelCreated = false
     }
 }

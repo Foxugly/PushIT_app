@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.foxugly.pushit_app.data.storage.TokenStorage
 import com.foxugly.pushit_app.platform.QrScannerView
+import com.foxugly.pushit_app.ui.components.ErrorBanner
 
 private const val APP_TOKEN_PREFIX = "apt_"
 
@@ -23,19 +24,6 @@ fun QrScannerScreen(
     var manualMode by remember { mutableStateOf(false) }
     var manualToken by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
-    var scanEnabled by remember { mutableStateOf(true) }
-
-    fun handleToken(token: String) {
-        if (token.startsWith(APP_TOKEN_PREFIX)) {
-            tokenStorage.setAppToken(token)
-            onTokenScanned()
-        } else {
-            error = "Invalid QR code. Token must start with \"$APP_TOKEN_PREFIX\"."
-            scanEnabled = false
-            // Re-enable scanning after showing error briefly
-            scanEnabled = true
-        }
-    }
 
     Scaffold(
         topBar = {
@@ -67,14 +55,12 @@ fun QrScannerScreen(
                 ) {
                     QrScannerView(
                         onQrCodeScanned = { scanned ->
-                            if (scanEnabled) {
-                                error = null
-                                if (scanned.startsWith(APP_TOKEN_PREFIX)) {
-                                    tokenStorage.setAppToken(scanned)
-                                    onTokenScanned()
-                                } else {
-                                    error = "Invalid QR code. Token must start with \"$APP_TOKEN_PREFIX\"."
-                                }
+                            error = null
+                            if (scanned.startsWith(APP_TOKEN_PREFIX)) {
+                                tokenStorage.setAppToken(scanned)
+                                onTokenScanned()
+                            } else {
+                                error = "Invalid QR code. Token must start with \"$APP_TOKEN_PREFIX\"."
                             }
                         },
                         onError = { errorMessage ->
@@ -84,10 +70,8 @@ fun QrScannerScreen(
                 }
 
                 error?.let { msg ->
-                    Text(
-                        text = msg,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium,
+                    ErrorBanner(
+                        msg,
                         modifier = Modifier
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                             .fillMaxWidth(),

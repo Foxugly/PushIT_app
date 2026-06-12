@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import com.foxugly.pushit_app.data.api.UserProfile
 import com.foxugly.pushit_app.data.repository.AuthRepository
 import com.foxugly.pushit_app.data.storage.TokenStorage
+import com.foxugly.pushit_app.ui.components.ErrorBanner
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -79,11 +80,7 @@ fun SettingsScreen(
                     CircularProgressIndicator(modifier = Modifier.size(24.dp))
                 }
                 userError != null -> {
-                    Text(
-                        text = userError!!,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+                    ErrorBanner(userError!!)
                 }
                 userProfile != null -> {
                     Card(
@@ -94,8 +91,10 @@ fun SettingsScreen(
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             LabeledValue(label = "Email", value = userProfile!!.email)
-                            Spacer(Modifier.height(8.dp))
-                            LabeledValue(label = "Username", value = userProfile!!.username)
+                            userProfile!!.userkey?.let { key ->
+                                Spacer(Modifier.height(8.dp))
+                                LabeledValue(label = "User key", value = key)
+                            }
                         }
                     }
                 }
@@ -152,6 +151,22 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(if (appToken != null) "Re-scan QR Code" else "Scan QR Code")
+            }
+
+            // Unlink: forget the app token on this device (e.g. shared/returned
+            // device). The token survives a normal logout by design; this is the
+            // explicit opt-out. Server-side unlink is a separate backlog item.
+            if (appToken != null) {
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = {
+                        tokenStorage.setAppToken(null)
+                        appToken = null
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Unlink this device")
+                }
             }
 
             Spacer(Modifier.weight(1f))

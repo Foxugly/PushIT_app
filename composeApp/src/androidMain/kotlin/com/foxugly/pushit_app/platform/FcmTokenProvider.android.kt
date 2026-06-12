@@ -2,9 +2,15 @@ package com.foxugly.pushit_app.platform
 
 import com.foxugly.pushit_app.diagnostics.AppLogger
 import com.google.firebase.messaging.FirebaseMessaging
+import kotlin.concurrent.Volatile
 
 actual class FcmTokenProvider {
+    // Written from the Firebase callback thread, read from coroutines — @Volatile
+    // gives a safe happens-before so getCurrentToken() never sees a stale null.
+    @Volatile
     private var currentToken: String? = null
+
+    @Volatile
     private var tokenCallback: ((String) -> Unit)? = null
 
     actual fun getCurrentToken(): String? {
@@ -17,6 +23,10 @@ actual class FcmTokenProvider {
     actual fun observeTokenChanges(onNewToken: (String) -> Unit) {
         tokenCallback = onNewToken
         currentToken?.let(onNewToken)
+    }
+
+    actual fun stopObservingTokenChanges() {
+        tokenCallback = null
     }
 
     fun refreshToken() {

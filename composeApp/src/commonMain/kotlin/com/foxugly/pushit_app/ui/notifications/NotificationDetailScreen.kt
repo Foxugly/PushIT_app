@@ -24,8 +24,10 @@ fun NotificationDetailScreen(
     var notification by remember { mutableStateOf<Notification?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Bump to re-run the loader (the Retry button) — the effect keys on it.
+    var reloadKey by remember { mutableStateOf(0) }
 
-    LaunchedEffect(notificationId) {
+    LaunchedEffect(notificationId, reloadKey) {
         isLoading = true
         error = null
         notificationRepository.getNotification(notificationId).fold(
@@ -71,10 +73,7 @@ fun NotificationDetailScreen(
                     ) {
                         ErrorBanner(error!!)
                         Spacer(Modifier.height(16.dp))
-                        Button(onClick = {
-                            // Re-trigger by resetting state; LaunchedEffect key won't re-fire,
-                            // so we use a side-effect approach via a manual reload flag.
-                        }) {
+                        Button(onClick = { reloadKey++ }) {
                             Text("Retry")
                         }
                     }

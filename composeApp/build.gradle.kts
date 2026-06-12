@@ -20,6 +20,13 @@ kotlin {
         androidResources {
             enable = true
         }
+        // Enable JVM-host unit tests so commonTest runs on the desktop (incl.
+        // Windows, no Mac/Xcode needed) via :composeApp:testAndroidHostTest.
+        // isReturnDefaultValues: android.util.Log (used by AppLogger) is not on the
+        // JVM test classpath — return defaults instead of throwing "not mocked".
+        withHostTestBuilder {}.configure {
+            isReturnDefaultValues = true
+        }
     }
 
     listOf(
@@ -37,8 +44,7 @@ kotlin {
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
-            implementation("org.jetbrains.compose.material:material-icons-core:1.7.3")
-
+            implementation(libs.compose.material.icons.core)
             implementation(libs.compose.ui)
             implementation(libs.compose.components.resources)
             implementation(libs.compose.uiToolingPreview)
@@ -56,6 +62,7 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.ktor.client.mock)
         }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)

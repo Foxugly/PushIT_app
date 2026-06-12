@@ -24,6 +24,11 @@ android {
         versionCode = 1
         versionName = "1.0"
     }
+    buildFeatures {
+        // BuildConfig.DEBUG is read in MainActivity to pick the API base URL +
+        // enable HTTP logging only in debug builds.
+        buildConfig = true
+    }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"

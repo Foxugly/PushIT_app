@@ -1,5 +1,6 @@
 package com.foxugly.pushit_app
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +15,7 @@ import com.foxugly.pushit_app.data.api.PushItApi
 import com.foxugly.pushit_app.data.repository.AuthRepository
 import com.foxugly.pushit_app.data.repository.NotificationRepository
 import com.foxugly.pushit_app.data.storage.TokenStorage
+import com.foxugly.pushit_app.data.storage.TokenStorageStore
 import com.foxugly.pushit_app.diagnostics.AppLogger
 import com.foxugly.pushit_app.navigation.Screen
 import com.foxugly.pushit_app.platform.DeviceLinkManager
@@ -23,7 +25,6 @@ import com.foxugly.pushit_app.ui.login.LoginScreen
 import com.foxugly.pushit_app.ui.notifications.NotificationDetailScreen
 import com.foxugly.pushit_app.ui.notifications.NotificationListScreen
 import com.foxugly.pushit_app.ui.qrscanner.QrScannerScreen
-import com.foxugly.pushit_app.ui.register.RegisterScreen
 import com.foxugly.pushit_app.ui.settings.SettingsScreen
 import kotlinx.coroutines.launch
 
@@ -32,14 +33,18 @@ fun App(
     tokenStorage: TokenStorage,
     fcmTokenProvider: FcmTokenProvider,
     externalRefreshTrigger: Int = 0,
+    apiBaseUrl: String = "https://pushit-api.foxugly.com/api/v1/",
+    enableHttpLogging: Boolean = false,
 ) {
-    val api = remember { PushItApi(tokenStorage) }
-    val authRepository = remember { AuthRepository(api, tokenStorage) }
-    val notificationRepository = remember { NotificationRepository(api) }
-    val deviceLinkManager = remember { DeviceLinkManager(api, tokenStorage, fcmTokenProvider) }
+    val tokenStore = remember(tokenStorage) { TokenStorageStore(tokenStorage) }
+    val api = remember(apiBaseUrl) { PushItApi(tokenStore, apiBaseUrl, enableHttpLogging) }
+    val authRepository = remember(api) { AuthRepository(api, tokenStore) }
+    val notificationRepository = remember(api) { NotificationRepository(api) }
+    val deviceLinkManager = remember(api) { DeviceLinkManager(api, tokenStore, fcmTokenProvider) }
 
     var currentScreen by remember { mutableStateOf<Screen?>(null) }
-    var previousScreen by remember { mutableStateOf<Screen>(Screen.Login) }
+    // Real back stack (the old single `previousScreen` lost history on 2-hop nav).
+    val backStack = remember { mutableStateListOf<Screen>() }
     var refreshTrigger by remember { mutableStateOf(0) }
     var runtimeError by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -47,11 +52,29 @@ fun App(
     // Combine internal and external refresh triggers
     val effectiveRefreshTrigger = refreshTrigger + externalRefreshTrigger
 
+    fun resetTo(screen: Screen) {
+        // Clears history — used after login/logout/auth-failure so a back press
+        // can't return to a stale (e.g. authenticated) screen.
+        backStack.clear()
+        runtimeError = null
+        currentScreen = screen
+    }
+
+    fun navigateTo(screen: Screen) {
+        AppLogger.info(TAG, "Navigate to $screen")
+        currentScreen?.let { backStack.add(it) }
+        currentScreen = screen
+    }
+
+    fun navigateBack() {
+        currentScreen = if (backStack.isNotEmpty()) backStack.removeAt(backStack.lastIndex) else Screen.Login
+    }
+
     // Auth failure callback
     LaunchedEffect(Unit) {
         api.onAuthFailure = {
             AppLogger.warn(TAG, "Authentication failure callback received")
-            currentScreen = Screen.Login
+            resetTo(Screen.Login)
         }
     }
 
@@ -89,8 +112,9 @@ fun App(
         }
     }
 
-    // Observe FCM token changes
-    LaunchedEffect(Unit) {
+    // Observe FCM token changes — DisposableEffect so the singleton provider's
+    // callback (and its captured scope) is detached when App leaves composition.
+    DisposableEffect(Unit) {
         deviceLinkManager.startObservingTokenChanges {
             scope.launch {
                 deviceLinkManager.syncAuthenticatedDevice().onFailure { throwable ->
@@ -98,12 +122,7 @@ fun App(
                 }
             }
         }
-    }
-
-    fun navigateTo(screen: Screen) {
-        AppLogger.info(TAG, "Navigate to $screen")
-        previousScreen = currentScreen ?: Screen.Login
-        currentScreen = screen
+        onDispose { deviceLinkManager.stopObservingTokenChanges() }
     }
 
     fun onLoginOrRegisterSuccess() {
@@ -114,9 +133,9 @@ fun App(
             }
             val hasKnownLinkedApps = state?.linkedApplications?.isNotEmpty() == true
             if (!hasKnownLinkedApps && tokenStorage.getAppToken() == null) {
-                navigateTo(Screen.QrScanner)
+                resetTo(Screen.QrScanner)
             } else {
-                navigateTo(Screen.NotificationList)
+                resetTo(Screen.NotificationList)
             }
         }
     }
@@ -132,34 +151,37 @@ fun App(
 
         Column(Modifier.fillMaxSize()) {
             runtimeError?.let {
-                ErrorBanner(it, modifier = Modifier.padding(top = 8.dp))
+                // Tap to dismiss — otherwise a transient sync error stuck around forever.
+                ErrorBanner(
+                    it,
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .clickable { runtimeError = null },
+                )
             }
             Box(Modifier.fillMaxSize()) {
                 when (screen) {
                     Screen.Login -> LoginScreen(
                         authRepository = authRepository,
                         onLoginSuccess = ::onLoginOrRegisterSuccess,
-                        onNavigateToRegister = { navigateTo(Screen.Register) },
-                    )
-                    Screen.Register -> RegisterScreen(
-                        authRepository = authRepository,
-                        onRegisterSuccess = ::onLoginOrRegisterSuccess,
-                        onNavigateToLogin = { navigateTo(Screen.Login) },
                     )
                     Screen.QrScanner -> QrScannerScreen(
                         tokenStorage = tokenStorage,
                         onTokenScanned = {
+                            // Link THEN navigate in the same coroutine: the old code
+                            // navigated synchronously before the link finished, so a
+                            // link failure surfaced on an already-different screen.
                             scope.launch {
                                 deviceLinkManager.linkWithStoredAppToken().onFailure { throwable ->
                                     runtimeError = throwable.message ?: "Device link failed"
                                 }
+                                resetTo(
+                                    if (authRepository.isAuthenticated()) Screen.NotificationList
+                                    else Screen.Login
+                                )
                             }
-                            navigateTo(
-                                if (authRepository.isAuthenticated()) Screen.NotificationList
-                                else Screen.Login
-                            )
                         },
-                        onBack = { navigateTo(previousScreen) },
+                        onBack = { navigateBack() },
                     )
                     Screen.NotificationList -> NotificationListScreen(
                         notificationRepository = notificationRepository,
@@ -170,14 +192,14 @@ fun App(
                     is Screen.NotificationDetail -> NotificationDetailScreen(
                         notificationId = screen.notificationId,
                         notificationRepository = notificationRepository,
-                        onNavigateBack = { navigateTo(Screen.NotificationList) },
+                        onNavigateBack = { navigateBack() },
                     )
                     Screen.Settings -> SettingsScreen(
                         authRepository = authRepository,
                         tokenStorage = tokenStorage,
                         onNavigateToQrScanner = { navigateTo(Screen.QrScanner) },
-                        onLogout = { currentScreen = Screen.Login },
-                        onBack = { navigateTo(Screen.NotificationList) },
+                        onLogout = { resetTo(Screen.Login) },
+                        onBack = { navigateBack() },
                     )
                 }
             }

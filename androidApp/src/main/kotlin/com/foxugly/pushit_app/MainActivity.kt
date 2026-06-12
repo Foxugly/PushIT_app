@@ -1,14 +1,18 @@
 package com.foxugly.pushit_app
 
+import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,6 +29,13 @@ import com.foxugly.pushit_app.data.storage.TokenStorage
 import com.foxugly.pushit_app.platform.FcmTokenProvider
 
 class MainActivity : ComponentActivity() {
+    // Android 13+ requires runtime consent for POST_NOTIFICATIONS; without it
+    // notificationManager.notify() is silently dropped. Registered before STARTED.
+    private val requestNotificationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            AppLogger.info(TAG, "POST_NOTIFICATIONS permission granted=$granted")
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         AppLogger.info(TAG, "MainActivity.onCreate started")
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
@@ -33,6 +44,7 @@ class MainActivity : ComponentActivity() {
 
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        maybeRequestNotificationPermission()
 
         val tokenStorage = try {
             TokenStorage(this).also {
@@ -81,12 +93,26 @@ class MainActivity : ComponentActivity() {
                 tokenStorage = tokenStorage,
                 fcmTokenProvider = fcmTokenProvider,
                 externalRefreshTrigger = refreshTrigger,
+                apiBaseUrl = if (BuildConfig.DEBUG) DEV_API_BASE_URL else PROD_API_BASE_URL,
+                enableHttpLogging = BuildConfig.DEBUG,
             )
+        }
+    }
+
+    private fun maybeRequestNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 
     companion object {
         private const val TAG = "PushIT/MainActivity"
+        // 10.0.2.2 = host loopback from the Android emulator.
+        private const val DEV_API_BASE_URL = "http://10.0.2.2:8000/api/v1/"
+        private const val PROD_API_BASE_URL = "https://pushit-api.foxugly.com/api/v1/"
     }
 }
 

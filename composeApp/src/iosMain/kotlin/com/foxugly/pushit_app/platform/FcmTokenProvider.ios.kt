@@ -10,6 +10,10 @@ actual class FcmTokenProvider {
         tokenCallback = onNewToken
     }
 
+    actual fun stopObservingTokenChanges() {
+        tokenCallback = null
+    }
+
     fun updateToken(token: String) {
         currentToken = token
         tokenCallback?.invoke(token)

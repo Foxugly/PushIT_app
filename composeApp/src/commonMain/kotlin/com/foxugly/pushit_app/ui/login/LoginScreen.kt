@@ -17,7 +17,6 @@ import kotlinx.coroutines.launch
 fun LoginScreen(
     authRepository: AuthRepository,
     onLoginSuccess: () -> Unit,
-    onNavigateToRegister: () -> Unit,
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -86,8 +85,12 @@ fun LoginScreen(
         }
         Spacer(Modifier.height(16.dp))
 
-        TextButton(onClick = onNavigateToRegister) {
-            Text("Don't have an account? Register")
-        }
+        // Registration is web-only (the sign-up form is captcha-protected, which a
+        // native screen can't satisfy). New users create an account on the dashboard.
+        Text(
+            text = "New here? Create an account at pushit.foxugly.com",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }

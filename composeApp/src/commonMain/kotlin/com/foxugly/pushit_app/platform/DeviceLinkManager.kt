@@ -5,7 +5,7 @@ import com.foxugly.pushit_app.data.api.DeviceIdentifyResponse
 import com.foxugly.pushit_app.data.api.DeviceLinkRequest
 import com.foxugly.pushit_app.data.api.LinkedApplication
 import com.foxugly.pushit_app.data.api.PushItApi
-import com.foxugly.pushit_app.data.storage.TokenStorage
+import com.foxugly.pushit_app.data.storage.TokenStore
 import com.foxugly.pushit_app.diagnostics.AppLogger
 import com.foxugly.pushit_app.getPlatform
 
@@ -17,7 +17,7 @@ data class DeviceConnectionState(
 
 class DeviceLinkManager(
     private val api: PushItApi,
-    private val tokenStorage: TokenStorage,
+    private val tokenStorage: TokenStore,
     private val fcmTokenProvider: FcmTokenProvider,
 ) {
     private val tag = "PushIT/DeviceLink"
@@ -135,5 +135,9 @@ class DeviceLinkManager(
             lastLinkedFcmToken = null
             onLink(Result.success(false))
         }
+    }
+
+    fun stopObservingTokenChanges() {
+        fcmTokenProvider.stopObservingTokenChanges()
     }
 }

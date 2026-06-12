@@ -42,7 +42,12 @@ fun NotificationListScreen(
     suspend fun loadPage(page: Int, replace: Boolean) {
         notificationRepository.getNotifications(page).fold(
             onSuccess = { response ->
-                notifications = if (replace) response.results else notifications + response.results
+                // distinctBy id: a notification arriving between page loads can shift
+                // the server offset and resurface an item on the next page → without
+                // dedup the LazyColumn's `key = id` would crash on duplicate keys.
+                notifications =
+                    if (replace) response.results
+                    else (notifications + response.results).distinctBy { it.id }
                 hasNextPage = response.next != null
                 currentPage = page
                 error = null
@@ -53,12 +58,20 @@ fun NotificationListScreen(
         )
     }
 
-    // Initial load and refresh-trigger response
-    LaunchedEffect(refreshTrigger) {
+    // Single guarded entry point for a full refresh — the LaunchedEffect trigger
+    // and the manual pull can both fire; without the guard two concurrent
+    // replace-loads could interleave and write `notifications` out of order.
+    suspend fun refresh() {
+        if (isRefreshing) return
         isRefreshing = true
         loadPage(page = 1, replace = true)
         isRefreshing = false
         isInitialLoad = false
+    }
+
+    // Initial load and refresh-trigger response
+    LaunchedEffect(refreshTrigger) {
+        refresh()
     }
 
     // Infinite scroll: detect when near bottom
@@ -95,13 +108,7 @@ fun NotificationListScreen(
     ) { paddingValues ->
         PullToRefreshBox(
             isRefreshing = isRefreshing,
-            onRefresh = {
-                scope.launch {
-                    isRefreshing = true
-                    loadPage(page = 1, replace = true)
-                    isRefreshing = false
-                }
-            },
+            onRefresh = { scope.launch { refresh() } },
             state = pullToRefreshState,
             modifier = Modifier
                 .fillMaxSize()
@@ -121,13 +128,7 @@ fun NotificationListScreen(
                     ) {
                         ErrorBanner(error!!)
                         Spacer(Modifier.height(16.dp))
-                        Button(onClick = {
-                            scope.launch {
-                                isRefreshing = true
-                                loadPage(page = 1, replace = true)
-                                isRefreshing = false
-                            }
-                        }) {
+                        Button(onClick = { scope.launch { refresh() } }) {
                             Text("Retry")
                         }
                     }
