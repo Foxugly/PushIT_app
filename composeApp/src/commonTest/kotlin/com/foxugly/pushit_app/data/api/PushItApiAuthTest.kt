@@ -1,6 +1,6 @@
 package com.foxugly.pushit_app.data.api
 
-import com.foxugly.pushit_app.data.storage.TokenStore
+import com.foxugly.pushit_app.FakeTokenStore
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.toByteArray
@@ -12,21 +12,6 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-
-private class FakeTokenStore(
-    private var access: String? = null,
-    private var refresh: String? = null,
-    private var app: String? = null,
-) : TokenStore {
-    var cleared = false
-    override fun getAccessToken() = access
-    override fun setAccessToken(token: String?) { access = token }
-    override fun getRefreshToken() = refresh
-    override fun setRefreshToken(token: String?) { refresh = token }
-    override fun getAppToken() = app
-    override fun setAppToken(token: String?) { app = token }
-    override fun clearAuthTokens() { access = null; refresh = null; cleared = true }
-}
 
 private val jsonHeader = headersOf(HttpHeaders.ContentType, "application/json")
 

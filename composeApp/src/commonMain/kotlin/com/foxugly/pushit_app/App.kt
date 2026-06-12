@@ -20,6 +20,7 @@ import com.foxugly.pushit_app.diagnostics.AppLogger
 import com.foxugly.pushit_app.navigation.Screen
 import com.foxugly.pushit_app.platform.DeviceLinkManager
 import com.foxugly.pushit_app.platform.FcmTokenProvider
+import com.foxugly.pushit_app.platform.FcmTokenProviderSource
 import com.foxugly.pushit_app.ui.components.ErrorBanner
 import com.foxugly.pushit_app.ui.login.LoginScreen
 import com.foxugly.pushit_app.ui.notifications.NotificationDetailScreen
@@ -40,7 +41,9 @@ fun App(
     val api = remember(apiBaseUrl) { PushItApi(tokenStore, apiBaseUrl, enableHttpLogging) }
     val authRepository = remember(api) { AuthRepository(api, tokenStore) }
     val notificationRepository = remember(api) { NotificationRepository(api) }
-    val deviceLinkManager = remember(api) { DeviceLinkManager(api, tokenStore, fcmTokenProvider) }
+    val deviceLinkManager = remember(api) {
+        DeviceLinkManager(api, tokenStore, FcmTokenProviderSource(fcmTokenProvider))
+    }
 
     var currentScreen by remember { mutableStateOf<Screen?>(null) }
     // Real back stack (the old single `previousScreen` lost history on 2-hop nav).

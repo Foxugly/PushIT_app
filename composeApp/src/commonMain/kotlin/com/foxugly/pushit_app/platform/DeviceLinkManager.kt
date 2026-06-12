@@ -18,7 +18,7 @@ data class DeviceConnectionState(
 class DeviceLinkManager(
     private val api: PushItApi,
     private val tokenStorage: TokenStore,
-    private val fcmTokenProvider: FcmTokenProvider,
+    private val fcmTokenProvider: FcmTokenSource,
 ) {
     private val tag = "PushIT/DeviceLink"
     private var lastLinkedFcmToken: String? = null

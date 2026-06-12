@@ -77,8 +77,9 @@ n'a pas encore de remote `Foxugly/PushIT_frontend`).
   **web Angular** de PushIT — projet distinct, pas l'app mobile.)*
 - [ ] **CI build APK** *(action Renaud, optionnel)* — pour activer le job `build-debug-apk`, ajouter le secret
   `GOOGLE_SERVICES_JSON_B64` + la variable repo `HAS_FIREBASE_SECRET=true`.
-- [ ] **Couverture de tests (suite)** — `AuthInterceptor`/`PushItApi` 401 couverts ; reste à tester
-  `AuthRepository`, `NotificationRepository`, `DeviceLinkManager` (le seam `TokenStore` + `MockEngine` est désormais en place).
+- [x] ~~**Couverture de tests (suite)**~~ → **fait** : `AuthRepository` (7), `NotificationRepository` (3),
+  `DeviceLinkManager` (4) testés via `MockEngine` + fakes (`TokenStore` + nouveau seam `FcmTokenSource`).
+  27 tests host au total. Reste possible plus tard : tests Compose UI (login/nav) — nécessitent Robolectric/émulateur.
 - [ ] **Unlink côté serveur** — le bouton « Unlink this device » efface l'app-token *local* uniquement ;
   le serveur garde la liaison device↔application. Ajouter un appel d'API de déliaison (endpoint backend à prévoir).
 
