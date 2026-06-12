@@ -28,6 +28,18 @@ Package: `com.foxugly.pushit_app`
 
 On Windows, use `.\gradlew.bat` instead of `./gradlew`.
 
+### Testing on Windows (important)
+
+The iOS test targets (`iosSimulatorArm64Test`, …) are **Kotlin/Native Apple targets** that can only
+link/run on **macOS**. On Windows they fail. So:
+
+- **Do NOT** run `:composeApp:test` (ambiguous) or `:composeApp:allTests` (drags in iOS) — both fail.
+- **DO** run **`.\gradlew.bat :composeApp:testAndroidHostTest`** — it runs the whole `commonTest`
+  suite on the JVM (no Mac, no emulator needed). This is the canonical local + CI test task.
+- **In the IDE**: the green-arrow gutter on a `commonTest` class may default to an iOS target or
+  `allTests` and fail. Either pick the **[android]** target when prompted, or run the test from the
+  **Gradle tool window** → `composeApp → Tasks → verification → testAndroidHostTest`.
+
 ## Architecture
 
 Two-module project (since the `androidApp`/`composeApp` split): **`:composeApp`** is a KMP **library**

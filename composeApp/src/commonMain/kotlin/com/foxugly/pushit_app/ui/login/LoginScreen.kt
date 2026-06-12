@@ -1,17 +1,22 @@
 package com.foxugly.pushit_app.ui.login
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.foxugly.pushit_app.data.repository.AuthRepository
 import com.foxugly.pushit_app.ui.components.ErrorBanner
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
+import pushit_app.composeapp.generated.resources.Res
+import pushit_app.composeapp.generated.resources.foxugly_logo
 
 @Composable
 fun LoginScreen(
@@ -24,8 +29,9 @@ fun LoginScreen(
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
+    Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -92,5 +98,30 @@ fun LoginScreen(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+
+        // "by [logo] Foxugly" credit pinned to the bottom.
+        Row(
+            modifier = Modifier.align(Alignment.BottomCenter),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "by ",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Image(
+                painter = painterResource(Res.drawable.foxugly_logo),
+                contentDescription = null,
+                modifier = Modifier.height(18.dp),
+                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(
+                text = "Foxugly",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
