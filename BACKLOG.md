@@ -80,8 +80,11 @@ plateforme Android/iOS, build/tests/hygiène). Sévérités : **P0** bloquant ·
 - [x] ~~**Couverture de tests (suite)**~~ → **fait** : `AuthRepository` (7), `NotificationRepository` (3),
   `DeviceLinkManager` (4) testés via `MockEngine` + fakes (`TokenStore` + nouveau seam `FcmTokenSource`).
   27 tests host au total. Reste possible plus tard : tests Compose UI (login/nav) — nécessitent Robolectric/émulateur.
-- [ ] **Unlink côté serveur** — le bouton « Unlink this device » efface l'app-token *local* uniquement ;
-  le serveur garde la liaison device↔application. Ajouter un appel d'API de déliaison (endpoint backend à prévoir).
+- [x] ~~**Unlink côté serveur**~~ → **fait** : nouvel endpoint backend `POST /devices/unlink/`
+  (`PushIT_server`, désactive le `DeviceApplicationLink`, idempotent, 3 tests) + le bouton « Unlink this
+  device » appelle `deviceLinkManager.unlinkCurrentDevice()` (serveur puis app-token local, garde le local
+  si le serveur échoue). 3 tests mobile. *(Le frontend web n'est pas concerné : endpoint device-side app-token,
+  la console web gère les devices par `device_id` — feature distincte si besoin un jour.)*
 
 ---
 

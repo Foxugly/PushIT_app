@@ -3,6 +3,7 @@ package com.foxugly.pushit_app.platform
 import com.foxugly.pushit_app.data.api.DeviceIdentifyRequest
 import com.foxugly.pushit_app.data.api.DeviceIdentifyResponse
 import com.foxugly.pushit_app.data.api.DeviceLinkRequest
+import com.foxugly.pushit_app.data.api.DeviceUnlinkRequest
 import com.foxugly.pushit_app.data.api.LinkedApplication
 import com.foxugly.pushit_app.data.api.PushItApi
 import com.foxugly.pushit_app.data.storage.TokenStore
@@ -127,6 +128,37 @@ class DeviceLinkManager(
         }.onFailure {
             AppLogger.error(tag, "Device link failed: ${it.message}", it)
         }
+    }
+
+    /**
+     * Unlink this device from its linked application: tell the server to
+     * deactivate the link, then forget the app token locally. Returns
+     * success(false) when there was nothing linked. On a server failure the
+     * local app token is kept (so the user can retry) — except when there's no
+     * FCM token to identify the device server-side, in which case we can only
+     * clear locally.
+     */
+    suspend fun unlinkCurrentDevice(): Result<Boolean> {
+        val appToken = tokenStorage.getAppToken() ?: return Result.success(false)
+        val fcmToken = fcmTokenProvider.getCurrentToken()
+        if (fcmToken == null) {
+            AppLogger.warn(tag, "Unlink: no FCM token, clearing app token locally only")
+            forgetAppTokenLocally()
+            return Result.success(true)
+        }
+        return api.unlinkDevice(DeviceUnlinkRequest(appToken = appToken, pushToken = fcmToken)).map {
+            AppLogger.info(tag, "Device unlinked server-side (unlinked=${it.unlinked})")
+            forgetAppTokenLocally()
+            true
+        }.onFailure {
+            AppLogger.error(tag, "Device unlink failed: ${it.message}", it)
+        }
+    }
+
+    private fun forgetAppTokenLocally() {
+        tokenStorage.setAppToken(null)
+        lastLinkedAppToken = null
+        lastLinkedFcmToken = null
     }
 
     fun startObservingTokenChanges(onLink: (Result<Boolean>) -> Unit) {

@@ -90,6 +90,20 @@ data class DeviceLinkResponse(
     @SerialName("application_id") val applicationId: Int,
 )
 
+@Serializable
+data class DeviceUnlinkRequest(
+    @SerialName("app_token") val appToken: String,
+    @SerialName("push_token") val pushToken: String,
+)
+
+@Serializable
+data class DeviceUnlinkResponse(
+    val status: String,
+    @SerialName("device_id") val deviceId: Int? = null,
+    @SerialName("application_id") val applicationId: Int,
+    val unlinked: Boolean,
+)
+
 // --- Notifications ---
 
 @Serializable

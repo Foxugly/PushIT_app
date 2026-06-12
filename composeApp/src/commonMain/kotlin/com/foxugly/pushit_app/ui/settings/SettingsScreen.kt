@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import com.foxugly.pushit_app.data.api.UserProfile
 import com.foxugly.pushit_app.data.repository.AuthRepository
 import com.foxugly.pushit_app.data.storage.TokenStorage
+import com.foxugly.pushit_app.platform.DeviceLinkManager
 import com.foxugly.pushit_app.ui.components.ErrorBanner
 import kotlinx.coroutines.launch
 
@@ -19,6 +20,7 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(
     authRepository: AuthRepository,
     tokenStorage: TokenStorage,
+    deviceLinkManager: DeviceLinkManager,
     onNavigateToQrScanner: () -> Unit,
     onLogout: () -> Unit,
     onBack: () -> Unit,
@@ -28,6 +30,8 @@ fun SettingsScreen(
     var isLoadingUser by remember { mutableStateOf(true) }
     var isLoggingOut by remember { mutableStateOf(false) }
     var appToken by remember { mutableStateOf(tokenStorage.getAppToken()) }
+    var isUnlinking by remember { mutableStateOf(false) }
+    var unlinkError by remember { mutableStateOf<String?>(null) }
 
     val scope = rememberCoroutineScope()
 
@@ -159,13 +163,29 @@ fun SettingsScreen(
             if (appToken != null) {
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(
+                    enabled = !isUnlinking,
                     onClick = {
-                        tokenStorage.setAppToken(null)
-                        appToken = null
+                        scope.launch {
+                            isUnlinking = true
+                            unlinkError = null
+                            deviceLinkManager.unlinkCurrentDevice().fold(
+                                onSuccess = { appToken = null },
+                                onFailure = { unlinkError = it.message ?: "Unlink failed" },
+                            )
+                            isUnlinking = false
+                        }
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Unlink this device")
+                    if (isUnlinking) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text("Unlink this device")
+                    }
+                }
+                unlinkError?.let {
+                    Spacer(Modifier.height(8.dp))
+                    ErrorBanner(it)
                 }
             }
 

@@ -117,6 +117,12 @@ class PushItApi(
         }
     }
 
+    suspend fun unlinkDevice(request: DeviceUnlinkRequest): Result<DeviceUnlinkResponse> = apiCall {
+        client.post("devices/unlink/") {
+            setBody(request)
+        }
+    }
+
     // --- Notifications ---
     suspend fun getNotifications(page: Int = 1): Result<NotificationListResponse> = apiCall {
         client.get("notifications/") { parameter("page", page) }

@@ -200,6 +200,7 @@ fun App(
                     Screen.Settings -> SettingsScreen(
                         authRepository = authRepository,
                         tokenStorage = tokenStorage,
+                        deviceLinkManager = deviceLinkManager,
                         onNavigateToQrScanner = { navigateTo(Screen.QrScanner) },
                         onLogout = { resetTo(Screen.Login) },
                         onBack = { navigateBack() },

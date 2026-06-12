@@ -67,6 +67,40 @@ class DeviceLinkManagerTest {
     }
 
     @Test
+    fun unlinkClearsLocalAppTokenOnServerSuccess() = runTest {
+        val store = FakeTokenStore(access = "a", app = "apt_x")
+        val engine = MockEngine {
+            respond("""{"status":"ok","device_id":1,"application_id":2,"unlinked":true}""", HttpStatusCode.OK, jsonHeader)
+        }
+        val result = manager(store, FakeFcmTokenSource("fcm"), engine).unlinkCurrentDevice()
+
+        assertTrue(result.isSuccess, "${result.exceptionOrNull()}")
+        assertEquals(true, result.getOrNull())
+        assertNull(store.getAppToken(), "local app token must be cleared after a server unlink")
+    }
+
+    @Test
+    fun unlinkIsNoOpWithoutAppToken() = runTest {
+        var hit = false
+        val engine = MockEngine { hit = true; respond("", HttpStatusCode.OK) }
+        val result = manager(FakeTokenStore(access = "a"), FakeFcmTokenSource("fcm"), engine).unlinkCurrentDevice()
+
+        assertTrue(result.isSuccess)
+        assertEquals(false, result.getOrNull())
+        assertFalse(hit, "nothing linked → no network call")
+    }
+
+    @Test
+    fun unlinkKeepsLocalAppTokenOnServerFailure() = runTest {
+        val store = FakeTokenStore(access = "a", app = "apt_x")
+        val engine = MockEngine { respond("""{"detail":"boom"}""", HttpStatusCode.InternalServerError, jsonHeader) }
+        val result = manager(store, FakeFcmTokenSource("fcm"), engine).unlinkCurrentDevice()
+
+        assertTrue(result.isFailure)
+        assertEquals("apt_x", store.getAppToken(), "keep the app token so the user can retry")
+    }
+
+    @Test
     fun stopObservingDetachesTheCallback() {
         val fcm = FakeFcmTokenSource("fcm")
         val engine = MockEngine { respond(IDENTIFY_OK, HttpStatusCode.OK, jsonHeader) }
