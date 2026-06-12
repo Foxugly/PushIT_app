@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		053909A35071BA3C052B5220 /* pustit_app.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = pustit_app.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		053909A35071BA3C052B5220 /* pushit_app.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = pushit_app.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -59,7 +59,7 @@
 		5E4811D8661A16411B9EE87D /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				053909A35071BA3C052B5220 /* pustit_app.app */,
+				053909A35071BA3C052B5220 /* pushit_app.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -87,7 +87,7 @@
 			packageProductDependencies = (
 			);
 			productName = iosApp;
-			productReference = 053909A35071BA3C052B5220 /* pustit_app.app */;
+			productReference = 053909A35071BA3C052B5220 /* pushit_app.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */

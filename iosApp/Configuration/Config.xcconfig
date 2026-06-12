@@ -1,7 +1,7 @@
 TEAM_ID=
 
-PRODUCT_NAME=pustit_app
-PRODUCT_BUNDLE_IDENTIFIER=com.foxugly.pustit_app.pustit_app$(TEAM_ID)
+PRODUCT_NAME=pushit_app
+PRODUCT_BUNDLE_IDENTIFIER=com.foxugly.pushit_app.pushit_app$(TEAM_ID)
 
 CURRENT_PROJECT_VERSION=1
 MARKETING_VERSION=1.0

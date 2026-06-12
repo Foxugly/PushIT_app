@@ -1,0 +1,43 @@
+name: CI
+
+# Runs on push / PR once this repo gets a remote (Foxugly/PushIT_frontend).
+# The unit-test job needs no secrets. The debug-APK job needs the Firebase
+# config provided as a base64 secret (GOOGLE_SERVICES_JSON_B64) because
+# google-services.json is git-ignored.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Host unit tests (commonMain + androidMain)
+        run: ./gradlew :composeApp:testAndroidHostTest --no-configuration-cache
+
+  build-debug-apk:
+    runs-on: ubuntu-latest
+    # Only runs when the Firebase secret is configured (google-services.json is
+    # git-ignored, so assembleDebug can't run without it).
+    if: ${{ vars.HAS_FIREBASE_SECRET == 'true' }}
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Write google-services.json from secret
+        run: echo "${{ secrets.GOOGLE_SERVICES_JSON_B64 }}" | base64 -d > androidApp/google-services.json
+      - name: Assemble debug APK
+        run: ./gradlew :androidApp:assembleDebug --no-configuration-cache

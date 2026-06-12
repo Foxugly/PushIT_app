@@ -19,56 +19,56 @@
 - `build.gradle.kts` — add serialization and google-services plugins
 - `gradle/libs.versions.toml` — add all new version catalog entries
 - `settings.gradle.kts` — no changes needed
-- `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/App.kt` — replace with navigation root
-- `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/Platform.kt` — add `deviceName` property
-- `composeApp/src/androidMain/kotlin/com/foxugly/pustit_app/Platform.android.kt` — add `deviceName`
-- `composeApp/src/iosMain/kotlin/com/foxugly/pustit_app/Platform.ios.kt` — add `deviceName`
-- `composeApp/src/androidMain/kotlin/com/foxugly/pustit_app/MainActivity.kt` — FCM notification channel setup
+- `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/App.kt` — replace with navigation root
+- `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/Platform.kt` — add `deviceName` property
+- `composeApp/src/androidMain/kotlin/com/foxugly/pushit_app/Platform.android.kt` — add `deviceName`
+- `composeApp/src/iosMain/kotlin/com/foxugly/pushit_app/Platform.ios.kt` — add `deviceName`
+- `composeApp/src/androidMain/kotlin/com/foxugly/pushit_app/MainActivity.kt` — FCM notification channel setup
 - `composeApp/src/androidMain/AndroidManifest.xml` — add camera permission, FCM service
 - `iosApp/iosApp/iOSApp.swift` — Firebase init, notification registration
 
 ### Files to Create — commonMain
-- `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/navigation/Screen.kt`
-- `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/data/api/Models.kt`
-- `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/data/api/PushItApi.kt`
-- `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/data/api/AuthInterceptor.kt`
-- `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/data/storage/TokenStorage.kt` (expect)
-- `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/data/repository/AuthRepository.kt`
-- `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/data/repository/NotificationRepository.kt`
-- `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/platform/FcmTokenProvider.kt` (expect)
-- `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/platform/QrScanner.kt` (expect)
-- `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/platform/DeviceLinkManager.kt`
-- `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/login/LoginScreen.kt`
-- `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/register/RegisterScreen.kt`
-- `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/notifications/NotificationListScreen.kt`
-- `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/notifications/NotificationDetailScreen.kt`
-- `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/settings/SettingsScreen.kt`
-- `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/qrscanner/QrScannerScreen.kt`
-- `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/components/LoadingIndicator.kt`
-- `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/components/ErrorBanner.kt`
+- `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/navigation/Screen.kt`
+- `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/data/api/Models.kt`
+- `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/data/api/PushItApi.kt`
+- `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/data/api/AuthInterceptor.kt`
+- `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/data/storage/TokenStorage.kt` (expect)
+- `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/data/repository/AuthRepository.kt`
+- `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/data/repository/NotificationRepository.kt`
+- `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/platform/FcmTokenProvider.kt` (expect)
+- `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/platform/QrScanner.kt` (expect)
+- `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/platform/DeviceLinkManager.kt`
+- `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/login/LoginScreen.kt`
+- `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/register/RegisterScreen.kt`
+- `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/notifications/NotificationListScreen.kt`
+- `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/notifications/NotificationDetailScreen.kt`
+- `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/settings/SettingsScreen.kt`
+- `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/qrscanner/QrScannerScreen.kt`
+- `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/components/LoadingIndicator.kt`
+- `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/components/ErrorBanner.kt`
 
 ### Files to Create — androidMain
-- `composeApp/src/androidMain/kotlin/com/foxugly/pustit_app/data/storage/TokenStorage.android.kt`
-- `composeApp/src/androidMain/kotlin/com/foxugly/pustit_app/platform/FcmTokenProvider.android.kt`
-- `composeApp/src/androidMain/kotlin/com/foxugly/pustit_app/platform/QrScanner.android.kt`
-- `composeApp/src/androidMain/kotlin/com/foxugly/pustit_app/PushItFirebaseService.kt`
+- `composeApp/src/androidMain/kotlin/com/foxugly/pushit_app/data/storage/TokenStorage.android.kt`
+- `composeApp/src/androidMain/kotlin/com/foxugly/pushit_app/platform/FcmTokenProvider.android.kt`
+- `composeApp/src/androidMain/kotlin/com/foxugly/pushit_app/platform/QrScanner.android.kt`
+- `composeApp/src/androidMain/kotlin/com/foxugly/pushit_app/PushItFirebaseService.kt`
 
 ### Files to Create — iosMain
-- `composeApp/src/iosMain/kotlin/com/foxugly/pustit_app/data/storage/TokenStorage.ios.kt`
-- `composeApp/src/iosMain/kotlin/com/foxugly/pustit_app/platform/FcmTokenProvider.ios.kt`
-- `composeApp/src/iosMain/kotlin/com/foxugly/pustit_app/platform/QrScanner.ios.kt`
+- `composeApp/src/iosMain/kotlin/com/foxugly/pushit_app/data/storage/TokenStorage.ios.kt`
+- `composeApp/src/iosMain/kotlin/com/foxugly/pushit_app/platform/FcmTokenProvider.ios.kt`
+- `composeApp/src/iosMain/kotlin/com/foxugly/pushit_app/platform/QrScanner.ios.kt`
 
 ### Files to Delete
 - `composeApp/src/jsMain/` (entire directory)
 - `composeApp/src/wasmJsMain/` (entire directory)
 - `composeApp/src/webMain/` (entire directory)
-- `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/Greeting.kt`
+- `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/Greeting.kt`
 
 ### Test Files to Create
-- `composeApp/src/commonTest/kotlin/com/foxugly/pustit_app/data/api/ModelsTest.kt`
-- `composeApp/src/commonTest/kotlin/com/foxugly/pustit_app/data/repository/AuthRepositoryTest.kt`
-- `composeApp/src/commonTest/kotlin/com/foxugly/pustit_app/data/repository/NotificationRepositoryTest.kt`
-- `composeApp/src/commonTest/kotlin/com/foxugly/pustit_app/platform/DeviceLinkManagerTest.kt`
+- `composeApp/src/commonTest/kotlin/com/foxugly/pushit_app/data/api/ModelsTest.kt`
+- `composeApp/src/commonTest/kotlin/com/foxugly/pushit_app/data/repository/AuthRepositoryTest.kt`
+- `composeApp/src/commonTest/kotlin/com/foxugly/pushit_app/data/repository/NotificationRepositoryTest.kt`
+- `composeApp/src/commonTest/kotlin/com/foxugly/pushit_app/platform/DeviceLinkManagerTest.kt`
 
 ---
 
@@ -81,7 +81,7 @@
 - Delete: `composeApp/src/jsMain/` (entire directory)
 - Delete: `composeApp/src/wasmJsMain/` (entire directory)
 - Delete: `composeApp/src/webMain/` (entire directory)
-- Delete: `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/Greeting.kt`
+- Delete: `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/Greeting.kt`
 
 - [ ] **Step 1: Add new versions and libraries to version catalog**
 
@@ -217,11 +217,11 @@ kotlin {
 }
 
 android {
-    namespace = "com.foxugly.pustit_app"
+    namespace = "com.foxugly.pushit_app"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.foxugly.pustit_app"
+        applicationId = "com.foxugly.pushit_app"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
@@ -252,15 +252,15 @@ dependencies {
 
 ```bash
 rm -rf composeApp/src/jsMain composeApp/src/wasmJsMain composeApp/src/webMain
-rm composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/Greeting.kt
+rm composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/Greeting.kt
 ```
 
 - [ ] **Step 5: Remove Greeting reference from App.kt**
 
-Replace `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/App.kt` temporarily with a minimal placeholder:
+Replace `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/App.kt` temporarily with a minimal placeholder:
 
 ```kotlin
-package com.foxugly.pustit_app
+package com.foxugly.pushit_app
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -285,10 +285,10 @@ fun App() {
 
 - [ ] **Step 6: Update the existing test**
 
-Replace `composeApp/src/commonTest/kotlin/com/foxugly/pustit_app/ComposeAppCommonTest.kt`:
+Replace `composeApp/src/commonTest/kotlin/com/foxugly/pushit_app/ComposeAppCommonTest.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app
+package com.foxugly.pushit_app
 
 import kotlin.test.Test
 import kotlin.test.assertTrue
@@ -322,15 +322,15 @@ git commit -m "chore: strip web targets, add KMP dependencies for networking/FCM
 ## Task 2: Data Models & Serialization
 
 **Files:**
-- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/data/api/Models.kt`
-- Create: `composeApp/src/commonTest/kotlin/com/foxugly/pustit_app/data/api/ModelsTest.kt`
+- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/data/api/Models.kt`
+- Create: `composeApp/src/commonTest/kotlin/com/foxugly/pushit_app/data/api/ModelsTest.kt`
 
 - [ ] **Step 1: Write the failing test for model serialization**
 
-Create `composeApp/src/commonTest/kotlin/com/foxugly/pustit_app/data/api/ModelsTest.kt`:
+Create `composeApp/src/commonTest/kotlin/com/foxugly/pushit_app/data/api/ModelsTest.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.data.api
+package com.foxugly.pushit_app.data.api
 
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
@@ -434,17 +434,17 @@ class ModelsTest {
 - [ ] **Step 2: Run test to verify it fails**
 
 ```bash
-./gradlew :composeApp:allTests --tests "com.foxugly.pustit_app.data.api.ModelsTest"
+./gradlew :composeApp:allTests --tests "com.foxugly.pushit_app.data.api.ModelsTest"
 ```
 
 Expected: FAIL — `Models.kt` does not exist yet.
 
 - [ ] **Step 3: Create Models.kt**
 
-Create `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/data/api/Models.kt`:
+Create `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/data/api/Models.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.data.api
+package com.foxugly.pushit_app.data.api
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -538,7 +538,7 @@ data class NotificationStats(
 - [ ] **Step 4: Run test to verify it passes**
 
 ```bash
-./gradlew :composeApp:allTests --tests "com.foxugly.pustit_app.data.api.ModelsTest"
+./gradlew :composeApp:allTests --tests "com.foxugly.pushit_app.data.api.ModelsTest"
 ```
 
 Expected: PASS — all 5 tests green.
@@ -546,8 +546,8 @@ Expected: PASS — all 5 tests green.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/data/api/Models.kt \
-       composeApp/src/commonTest/kotlin/com/foxugly/pustit_app/data/api/ModelsTest.kt
+git add composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/data/api/Models.kt \
+       composeApp/src/commonTest/kotlin/com/foxugly/pushit_app/data/api/ModelsTest.kt
 git commit -m "feat: add serializable data models for auth, device, and notification DTOs"
 ```
 
@@ -556,16 +556,16 @@ git commit -m "feat: add serializable data models for auth, device, and notifica
 ## Task 3: Token Storage (expect/actual)
 
 **Files:**
-- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/data/storage/TokenStorage.kt`
-- Create: `composeApp/src/androidMain/kotlin/com/foxugly/pustit_app/data/storage/TokenStorage.android.kt`
-- Create: `composeApp/src/iosMain/kotlin/com/foxugly/pustit_app/data/storage/TokenStorage.ios.kt`
+- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/data/storage/TokenStorage.kt`
+- Create: `composeApp/src/androidMain/kotlin/com/foxugly/pushit_app/data/storage/TokenStorage.android.kt`
+- Create: `composeApp/src/iosMain/kotlin/com/foxugly/pushit_app/data/storage/TokenStorage.ios.kt`
 
 - [ ] **Step 1: Create the expect class in commonMain**
 
-Create `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/data/storage/TokenStorage.kt`:
+Create `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/data/storage/TokenStorage.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.data.storage
+package com.foxugly.pushit_app.data.storage
 
 expect class TokenStorage {
     fun getAccessToken(): String?
@@ -580,10 +580,10 @@ expect class TokenStorage {
 
 - [ ] **Step 2: Create Android actual using EncryptedSharedPreferences**
 
-Create `composeApp/src/androidMain/kotlin/com/foxugly/pustit_app/data/storage/TokenStorage.android.kt`:
+Create `composeApp/src/androidMain/kotlin/com/foxugly/pushit_app/data/storage/TokenStorage.android.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.data.storage
+package com.foxugly.pushit_app.data.storage
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -593,7 +593,7 @@ import androidx.security.crypto.MasterKeys
 actual class TokenStorage(context: Context) {
 
     private val prefs: SharedPreferences = EncryptedSharedPreferences.create(
-        "pustit_secure_prefs",
+        "pushit_secure_prefs",
         MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC),
         context,
         EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
@@ -632,10 +632,10 @@ actual class TokenStorage(context: Context) {
 
 - [ ] **Step 3: Create iOS actual using NSUserDefaults with Keychain**
 
-Create `composeApp/src/iosMain/kotlin/com/foxugly/pustit_app/data/storage/TokenStorage.ios.kt`:
+Create `composeApp/src/iosMain/kotlin/com/foxugly/pushit_app/data/storage/TokenStorage.ios.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.data.storage
+package com.foxugly.pushit_app.data.storage
 
 import platform.Foundation.NSUserDefaults
 import platform.Security.*
@@ -730,9 +730,9 @@ actual class TokenStorage {
     }
 
     companion object {
-        private const val KEY_ACCESS = "pustit_access_token"
-        private const val KEY_REFRESH = "pustit_refresh_token"
-        private const val KEY_APP_TOKEN = "pustit_app_token"
+        private const val KEY_ACCESS = "pushit_access_token"
+        private const val KEY_REFRESH = "pushit_refresh_token"
+        private const val KEY_APP_TOKEN = "pushit_app_token"
     }
 }
 ```
@@ -748,9 +748,9 @@ Expected: BUILD SUCCESSFUL
 - [ ] **Step 5: Commit**
 
 ```bash
-git add composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/data/storage/TokenStorage.kt \
-       composeApp/src/androidMain/kotlin/com/foxugly/pustit_app/data/storage/TokenStorage.android.kt \
-       composeApp/src/iosMain/kotlin/com/foxugly/pustit_app/data/storage/TokenStorage.ios.kt
+git add composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/data/storage/TokenStorage.kt \
+       composeApp/src/androidMain/kotlin/com/foxugly/pushit_app/data/storage/TokenStorage.android.kt \
+       composeApp/src/iosMain/kotlin/com/foxugly/pushit_app/data/storage/TokenStorage.ios.kt
 git commit -m "feat: add expect/actual TokenStorage with encrypted Android/iOS implementations"
 ```
 
@@ -759,17 +759,17 @@ git commit -m "feat: add expect/actual TokenStorage with encrypted Android/iOS i
 ## Task 4: Ktor API Client & Auth Interceptor
 
 **Files:**
-- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/data/api/PushItApi.kt`
-- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/data/api/AuthInterceptor.kt`
+- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/data/api/PushItApi.kt`
+- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/data/api/AuthInterceptor.kt`
 
 - [ ] **Step 1: Create AuthInterceptor**
 
-Create `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/data/api/AuthInterceptor.kt`:
+Create `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/data/api/AuthInterceptor.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.data.api
+package com.foxugly.pushit_app.data.api
 
-import com.foxugly.pustit_app.data.storage.TokenStorage
+import com.foxugly.pushit_app.data.storage.TokenStorage
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.plugins.*
@@ -846,12 +846,12 @@ class AuthInterceptor(
 
 - [ ] **Step 2: Create PushItApi**
 
-Create `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/data/api/PushItApi.kt`:
+Create `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/data/api/PushItApi.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.data.api
+package com.foxugly.pushit_app.data.api
 
-import com.foxugly.pustit_app.data.storage.TokenStorage
+import com.foxugly.pushit_app.data.storage.TokenStorage
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.plugins.*
@@ -983,8 +983,8 @@ Expected: BUILD SUCCESSFUL
 - [ ] **Step 4: Commit**
 
 ```bash
-git add composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/data/api/PushItApi.kt \
-       composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/data/api/AuthInterceptor.kt
+git add composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/data/api/PushItApi.kt \
+       composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/data/api/AuthInterceptor.kt
 git commit -m "feat: add Ktor API client with JWT auth interceptor and token refresh"
 ```
 
@@ -993,20 +993,20 @@ git commit -m "feat: add Ktor API client with JWT auth interceptor and token ref
 ## Task 5: Repositories
 
 **Files:**
-- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/data/repository/AuthRepository.kt`
-- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/data/repository/NotificationRepository.kt`
-- Create: `composeApp/src/commonTest/kotlin/com/foxugly/pustit_app/data/repository/AuthRepositoryTest.kt`
-- Create: `composeApp/src/commonTest/kotlin/com/foxugly/pustit_app/data/repository/NotificationRepositoryTest.kt`
+- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/data/repository/AuthRepository.kt`
+- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/data/repository/NotificationRepository.kt`
+- Create: `composeApp/src/commonTest/kotlin/com/foxugly/pushit_app/data/repository/AuthRepositoryTest.kt`
+- Create: `composeApp/src/commonTest/kotlin/com/foxugly/pushit_app/data/repository/NotificationRepositoryTest.kt`
 
 - [ ] **Step 1: Create AuthRepository**
 
-Create `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/data/repository/AuthRepository.kt`:
+Create `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/data/repository/AuthRepository.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.data.repository
+package com.foxugly.pushit_app.data.repository
 
-import com.foxugly.pustit_app.data.api.*
-import com.foxugly.pustit_app.data.storage.TokenStorage
+import com.foxugly.pushit_app.data.api.*
+import com.foxugly.pushit_app.data.storage.TokenStorage
 
 class AuthRepository(
     private val api: PushItApi,
@@ -1065,12 +1065,12 @@ class AuthRepository(
 
 - [ ] **Step 2: Create NotificationRepository**
 
-Create `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/data/repository/NotificationRepository.kt`:
+Create `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/data/repository/NotificationRepository.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.data.repository
+package com.foxugly.pushit_app.data.repository
 
-import com.foxugly.pustit_app.data.api.*
+import com.foxugly.pushit_app.data.api.*
 
 class NotificationRepository(
     private val api: PushItApi,
@@ -1101,8 +1101,8 @@ Expected: BUILD SUCCESSFUL
 - [ ] **Step 4: Commit**
 
 ```bash
-git add composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/data/repository/AuthRepository.kt \
-       composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/data/repository/NotificationRepository.kt
+git add composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/data/repository/AuthRepository.kt \
+       composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/data/repository/NotificationRepository.kt
 git commit -m "feat: add auth and notification repositories"
 ```
 
@@ -1111,21 +1111,21 @@ git commit -m "feat: add auth and notification repositories"
 ## Task 6: Navigation & Platform Interfaces
 
 **Files:**
-- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/navigation/Screen.kt`
-- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/platform/FcmTokenProvider.kt`
-- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/platform/QrScanner.kt`
-- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/platform/DeviceLinkManager.kt`
-- Modify: `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/Platform.kt`
-- Modify: `composeApp/src/androidMain/kotlin/com/foxugly/pustit_app/Platform.android.kt`
-- Modify: `composeApp/src/iosMain/kotlin/com/foxugly/pustit_app/Platform.ios.kt`
-- Create: `composeApp/src/commonTest/kotlin/com/foxugly/pustit_app/platform/DeviceLinkManagerTest.kt`
+- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/navigation/Screen.kt`
+- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/platform/FcmTokenProvider.kt`
+- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/platform/QrScanner.kt`
+- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/platform/DeviceLinkManager.kt`
+- Modify: `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/Platform.kt`
+- Modify: `composeApp/src/androidMain/kotlin/com/foxugly/pushit_app/Platform.android.kt`
+- Modify: `composeApp/src/iosMain/kotlin/com/foxugly/pushit_app/Platform.ios.kt`
+- Create: `composeApp/src/commonTest/kotlin/com/foxugly/pushit_app/platform/DeviceLinkManagerTest.kt`
 
 - [ ] **Step 1: Create Screen sealed class**
 
-Create `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/navigation/Screen.kt`:
+Create `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/navigation/Screen.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.navigation
+package com.foxugly.pushit_app.navigation
 
 sealed class Screen {
     data object Login : Screen()
@@ -1139,10 +1139,10 @@ sealed class Screen {
 
 - [ ] **Step 2: Add deviceName to Platform interface**
 
-Replace `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/Platform.kt`:
+Replace `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/Platform.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app
+package com.foxugly.pushit_app
 
 interface Platform {
     val name: String
@@ -1153,10 +1153,10 @@ interface Platform {
 expect fun getPlatform(): Platform
 ```
 
-Replace `composeApp/src/androidMain/kotlin/com/foxugly/pustit_app/Platform.android.kt`:
+Replace `composeApp/src/androidMain/kotlin/com/foxugly/pushit_app/Platform.android.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app
+package com.foxugly.pushit_app
 
 import android.os.Build
 
@@ -1169,10 +1169,10 @@ class AndroidPlatform : Platform {
 actual fun getPlatform(): Platform = AndroidPlatform()
 ```
 
-Replace `composeApp/src/iosMain/kotlin/com/foxugly/pustit_app/Platform.ios.kt`:
+Replace `composeApp/src/iosMain/kotlin/com/foxugly/pushit_app/Platform.ios.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app
+package com.foxugly.pushit_app
 
 import platform.UIKit.UIDevice
 
@@ -1187,10 +1187,10 @@ actual fun getPlatform(): Platform = IOSPlatform()
 
 - [ ] **Step 3: Create FcmTokenProvider expect declaration**
 
-Create `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/platform/FcmTokenProvider.kt`:
+Create `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/platform/FcmTokenProvider.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.platform
+package com.foxugly.pushit_app.platform
 
 expect class FcmTokenProvider {
     fun getCurrentToken(): String?
@@ -1200,10 +1200,10 @@ expect class FcmTokenProvider {
 
 - [ ] **Step 4: Create QrScanner expect declaration**
 
-Create `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/platform/QrScanner.kt`:
+Create `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/platform/QrScanner.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.platform
+package com.foxugly.pushit_app.platform
 
 import androidx.compose.runtime.Composable
 
@@ -1216,15 +1216,15 @@ expect fun QrScannerView(
 
 - [ ] **Step 5: Create DeviceLinkManager**
 
-Create `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/platform/DeviceLinkManager.kt`:
+Create `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/platform/DeviceLinkManager.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.platform
+package com.foxugly.pushit_app.platform
 
-import com.foxugly.pustit_app.data.api.DeviceLinkRequest
-import com.foxugly.pustit_app.data.api.PushItApi
-import com.foxugly.pustit_app.data.storage.TokenStorage
-import com.foxugly.pustit_app.getPlatform
+import com.foxugly.pushit_app.data.api.DeviceLinkRequest
+import com.foxugly.pushit_app.data.api.PushItApi
+import com.foxugly.pushit_app.data.storage.TokenStorage
+import com.foxugly.pushit_app.getPlatform
 
 class DeviceLinkManager(
     private val api: PushItApi,
@@ -1282,11 +1282,11 @@ Expected: BUILD SUCCESSFUL
 - [ ] **Step 7: Commit**
 
 ```bash
-git add composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/navigation/ \
-       composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/platform/ \
-       composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/Platform.kt \
-       composeApp/src/androidMain/kotlin/com/foxugly/pustit_app/Platform.android.kt \
-       composeApp/src/iosMain/kotlin/com/foxugly/pustit_app/Platform.ios.kt
+git add composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/navigation/ \
+       composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/platform/ \
+       composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/Platform.kt \
+       composeApp/src/androidMain/kotlin/com/foxugly/pushit_app/Platform.android.kt \
+       composeApp/src/iosMain/kotlin/com/foxugly/pushit_app/Platform.ios.kt
 git commit -m "feat: add navigation, platform interfaces, FCM/QR expect declarations, DeviceLinkManager"
 ```
 
@@ -1295,17 +1295,17 @@ git commit -m "feat: add navigation, platform interfaces, FCM/QR expect declarat
 ## Task 7: UI Components & Login/Register Screens
 
 **Files:**
-- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/components/LoadingIndicator.kt`
-- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/components/ErrorBanner.kt`
-- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/login/LoginScreen.kt`
-- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/register/RegisterScreen.kt`
+- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/components/LoadingIndicator.kt`
+- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/components/ErrorBanner.kt`
+- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/login/LoginScreen.kt`
+- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/register/RegisterScreen.kt`
 
 - [ ] **Step 1: Create shared UI components**
 
-Create `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/components/LoadingIndicator.kt`:
+Create `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/components/LoadingIndicator.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.ui.components
+package com.foxugly.pushit_app.ui.components
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -1325,10 +1325,10 @@ fun LoadingIndicator(modifier: Modifier = Modifier) {
 }
 ```
 
-Create `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/components/ErrorBanner.kt`:
+Create `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/components/ErrorBanner.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.ui.components
+package com.foxugly.pushit_app.ui.components
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -1358,10 +1358,10 @@ fun ErrorBanner(message: String, modifier: Modifier = Modifier) {
 
 - [ ] **Step 2: Create LoginScreen**
 
-Create `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/login/LoginScreen.kt`:
+Create `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/login/LoginScreen.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.ui.login
+package com.foxugly.pushit_app.ui.login
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -1372,8 +1372,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import com.foxugly.pustit_app.data.repository.AuthRepository
-import com.foxugly.pustit_app.ui.components.ErrorBanner
+import com.foxugly.pushit_app.data.repository.AuthRepository
+import com.foxugly.pushit_app.ui.components.ErrorBanner
 import kotlinx.coroutines.launch
 
 @Composable
@@ -1463,10 +1463,10 @@ fun LoginScreen(
 
 - [ ] **Step 3: Create RegisterScreen**
 
-Create `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/register/RegisterScreen.kt`:
+Create `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/register/RegisterScreen.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.ui.register
+package com.foxugly.pushit_app.ui.register
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -1477,8 +1477,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import com.foxugly.pustit_app.data.repository.AuthRepository
-import com.foxugly.pustit_app.ui.components.ErrorBanner
+import com.foxugly.pushit_app.data.repository.AuthRepository
+import com.foxugly.pushit_app.ui.components.ErrorBanner
 import kotlinx.coroutines.launch
 
 @Composable
@@ -1587,7 +1587,7 @@ Expected: BUILD SUCCESSFUL
 - [ ] **Step 5: Commit**
 
 ```bash
-git add composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/
+git add composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/
 git commit -m "feat: add login, register screens and shared UI components"
 ```
 
@@ -1596,15 +1596,15 @@ git commit -m "feat: add login, register screens and shared UI components"
 ## Task 8: Notification List & Detail Screens
 
 **Files:**
-- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/notifications/NotificationListScreen.kt`
-- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/notifications/NotificationDetailScreen.kt`
+- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/notifications/NotificationListScreen.kt`
+- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/notifications/NotificationDetailScreen.kt`
 
 - [ ] **Step 1: Create NotificationListScreen with infinite scroll**
 
-Create `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/notifications/NotificationListScreen.kt`:
+Create `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/notifications/NotificationListScreen.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.ui.notifications
+package com.foxugly.pushit_app.ui.notifications
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -1620,9 +1620,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.foxugly.pustit_app.data.api.Notification
-import com.foxugly.pustit_app.data.repository.NotificationRepository
-import com.foxugly.pustit_app.ui.components.ErrorBanner
+import com.foxugly.pushit_app.data.api.Notification
+import com.foxugly.pushit_app.data.repository.NotificationRepository
+import com.foxugly.pushit_app.ui.components.ErrorBanner
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1811,10 +1811,10 @@ private fun StatusBadge(status: String) {
 
 - [ ] **Step 2: Create NotificationDetailScreen**
 
-Create `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/notifications/NotificationDetailScreen.kt`:
+Create `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/notifications/NotificationDetailScreen.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.ui.notifications
+package com.foxugly.pushit_app.ui.notifications
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -1824,9 +1824,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.foxugly.pustit_app.data.api.Notification
-import com.foxugly.pustit_app.data.repository.NotificationRepository
-import com.foxugly.pustit_app.ui.components.ErrorBanner
+import com.foxugly.pushit_app.data.api.Notification
+import com.foxugly.pushit_app.data.repository.NotificationRepository
+import com.foxugly.pushit_app.ui.components.ErrorBanner
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1913,7 +1913,7 @@ Expected: BUILD SUCCESSFUL
 - [ ] **Step 4: Commit**
 
 ```bash
-git add composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/notifications/
+git add composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/notifications/
 git commit -m "feat: add notification list with infinite scroll and detail screen"
 ```
 
@@ -1922,15 +1922,15 @@ git commit -m "feat: add notification list with infinite scroll and detail scree
 ## Task 9: QR Scanner Screen & Settings Screen
 
 **Files:**
-- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/qrscanner/QrScannerScreen.kt`
-- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/settings/SettingsScreen.kt`
+- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/qrscanner/QrScannerScreen.kt`
+- Create: `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/settings/SettingsScreen.kt`
 
 - [ ] **Step 1: Create QrScannerScreen**
 
-Create `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/qrscanner/QrScannerScreen.kt`:
+Create `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/qrscanner/QrScannerScreen.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.ui.qrscanner
+package com.foxugly.pushit_app.ui.qrscanner
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -1940,8 +1940,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.foxugly.pustit_app.data.storage.TokenStorage
-import com.foxugly.pustit_app.platform.QrScannerView
+import com.foxugly.pushit_app.data.storage.TokenStorage
+import com.foxugly.pushit_app.platform.QrScannerView
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -2056,10 +2056,10 @@ fun QrScannerScreen(
 
 - [ ] **Step 2: Create SettingsScreen**
 
-Create `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/settings/SettingsScreen.kt`:
+Create `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/settings/SettingsScreen.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.ui.settings
+package com.foxugly.pushit_app.ui.settings
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -2069,9 +2069,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.foxugly.pustit_app.data.api.UserProfile
-import com.foxugly.pustit_app.data.repository.AuthRepository
-import com.foxugly.pustit_app.data.storage.TokenStorage
+import com.foxugly.pushit_app.data.api.UserProfile
+import com.foxugly.pushit_app.data.repository.AuthRepository
+import com.foxugly.pushit_app.data.storage.TokenStorage
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -2196,8 +2196,8 @@ Expected: BUILD SUCCESSFUL
 - [ ] **Step 4: Commit**
 
 ```bash
-git add composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/qrscanner/ \
-       composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/ui/settings/
+git add composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/qrscanner/ \
+       composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/ui/settings/
 git commit -m "feat: add QR scanner screen with manual fallback and settings screen"
 ```
 
@@ -2206,14 +2206,14 @@ git commit -m "feat: add QR scanner screen with manual fallback and settings scr
 ## Task 10: Root App Navigation Wiring
 
 **Files:**
-- Modify: `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/App.kt`
+- Modify: `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/App.kt`
 
 - [ ] **Step 1: Replace App.kt with full navigation root**
 
-Replace `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/App.kt`:
+Replace `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/App.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app
+package com.foxugly.pushit_app
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -2222,19 +2222,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.foxugly.pustit_app.data.api.PushItApi
-import com.foxugly.pustit_app.data.repository.AuthRepository
-import com.foxugly.pustit_app.data.repository.NotificationRepository
-import com.foxugly.pustit_app.data.storage.TokenStorage
-import com.foxugly.pustit_app.navigation.Screen
-import com.foxugly.pustit_app.platform.DeviceLinkManager
-import com.foxugly.pustit_app.platform.FcmTokenProvider
-import com.foxugly.pustit_app.ui.login.LoginScreen
-import com.foxugly.pustit_app.ui.notifications.NotificationDetailScreen
-import com.foxugly.pustit_app.ui.notifications.NotificationListScreen
-import com.foxugly.pustit_app.ui.qrscanner.QrScannerScreen
-import com.foxugly.pustit_app.ui.register.RegisterScreen
-import com.foxugly.pustit_app.ui.settings.SettingsScreen
+import com.foxugly.pushit_app.data.api.PushItApi
+import com.foxugly.pushit_app.data.repository.AuthRepository
+import com.foxugly.pushit_app.data.repository.NotificationRepository
+import com.foxugly.pushit_app.data.storage.TokenStorage
+import com.foxugly.pushit_app.navigation.Screen
+import com.foxugly.pushit_app.platform.DeviceLinkManager
+import com.foxugly.pushit_app.platform.FcmTokenProvider
+import com.foxugly.pushit_app.ui.login.LoginScreen
+import com.foxugly.pushit_app.ui.notifications.NotificationDetailScreen
+import com.foxugly.pushit_app.ui.notifications.NotificationListScreen
+import com.foxugly.pushit_app.ui.qrscanner.QrScannerScreen
+import com.foxugly.pushit_app.ui.register.RegisterScreen
+import com.foxugly.pushit_app.ui.settings.SettingsScreen
 import kotlinx.coroutines.launch
 
 @Composable
@@ -2360,7 +2360,7 @@ Expected: BUILD SUCCESSFUL (may have warnings about unused imports — that's fi
 - [ ] **Step 3: Commit**
 
 ```bash
-git add composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/App.kt
+git add composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/App.kt
 git commit -m "feat: wire up root navigation with startup flow and device link coordination"
 ```
 
@@ -2369,18 +2369,18 @@ git commit -m "feat: wire up root navigation with startup flow and device link c
 ## Task 11: Android Platform Implementations
 
 **Files:**
-- Create: `composeApp/src/androidMain/kotlin/com/foxugly/pustit_app/platform/FcmTokenProvider.android.kt`
-- Create: `composeApp/src/androidMain/kotlin/com/foxugly/pustit_app/platform/QrScanner.android.kt`
-- Create: `composeApp/src/androidMain/kotlin/com/foxugly/pustit_app/PushItFirebaseService.kt`
-- Modify: `composeApp/src/androidMain/kotlin/com/foxugly/pustit_app/MainActivity.kt`
+- Create: `composeApp/src/androidMain/kotlin/com/foxugly/pushit_app/platform/FcmTokenProvider.android.kt`
+- Create: `composeApp/src/androidMain/kotlin/com/foxugly/pushit_app/platform/QrScanner.android.kt`
+- Create: `composeApp/src/androidMain/kotlin/com/foxugly/pushit_app/PushItFirebaseService.kt`
+- Modify: `composeApp/src/androidMain/kotlin/com/foxugly/pushit_app/MainActivity.kt`
 - Modify: `composeApp/src/androidMain/AndroidManifest.xml`
 
 - [ ] **Step 1: Create Android FcmTokenProvider**
 
-Create `composeApp/src/androidMain/kotlin/com/foxugly/pustit_app/platform/FcmTokenProvider.android.kt`:
+Create `composeApp/src/androidMain/kotlin/com/foxugly/pushit_app/platform/FcmTokenProvider.android.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.platform
+package com.foxugly.pushit_app.platform
 
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.tasks.await
@@ -2411,17 +2411,17 @@ actual class FcmTokenProvider {
 
 - [ ] **Step 2: Create PushItFirebaseService**
 
-Create `composeApp/src/androidMain/kotlin/com/foxugly/pustit_app/PushItFirebaseService.kt`:
+Create `composeApp/src/androidMain/kotlin/com/foxugly/pushit_app/PushItFirebaseService.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app
+package com.foxugly.pushit_app
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import com.foxugly.pustit_app.platform.FcmTokenProvider
+import com.foxugly.pushit_app.platform.FcmTokenProvider
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 
@@ -2468,18 +2468,18 @@ class PushItFirebaseService : FirebaseMessagingService() {
     }
 
     companion object {
-        const val CHANNEL_ID = "pustit_notifications"
-        const val ACTION_NOTIFICATION_RECEIVED = "com.foxugly.pustit_app.NOTIFICATION_RECEIVED"
+        const val CHANNEL_ID = "pushit_notifications"
+        const val ACTION_NOTIFICATION_RECEIVED = "com.foxugly.pushit_app.NOTIFICATION_RECEIVED"
     }
 }
 ```
 
 - [ ] **Step 3: Create Android QrScanner composable**
 
-Create `composeApp/src/androidMain/kotlin/com/foxugly/pustit_app/platform/QrScanner.android.kt`:
+Create `composeApp/src/androidMain/kotlin/com/foxugly/pushit_app/platform/QrScanner.android.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.platform
+package com.foxugly.pushit_app.platform
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -2614,10 +2614,10 @@ actual fun QrScannerView(
 
 - [ ] **Step 4: Update MainActivity**
 
-Replace `composeApp/src/androidMain/kotlin/com/foxugly/pustit_app/MainActivity.kt`:
+Replace `composeApp/src/androidMain/kotlin/com/foxugly/pushit_app/MainActivity.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app
+package com.foxugly.pushit_app
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -2628,8 +2628,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.foxugly.pustit_app.data.storage.TokenStorage
-import com.foxugly.pustit_app.platform.FcmTokenProvider
+import com.foxugly.pushit_app.data.storage.TokenStorage
+import com.foxugly.pushit_app.platform.FcmTokenProvider
 
 class MainActivity : ComponentActivity() {
 
@@ -2712,18 +2712,18 @@ git commit -m "feat: add Android FCM service, QR scanner with CameraX/MLKit, and
 ## Task 12: iOS Platform Implementations
 
 **Files:**
-- Create: `composeApp/src/iosMain/kotlin/com/foxugly/pustit_app/platform/FcmTokenProvider.ios.kt`
-- Create: `composeApp/src/iosMain/kotlin/com/foxugly/pustit_app/platform/QrScanner.ios.kt`
-- Create: `composeApp/src/iosMain/kotlin/com/foxugly/pustit_app/data/storage/TokenStorage.ios.kt` (already created in Task 3)
-- Modify: `composeApp/src/iosMain/kotlin/com/foxugly/pustit_app/MainViewController.kt`
+- Create: `composeApp/src/iosMain/kotlin/com/foxugly/pushit_app/platform/FcmTokenProvider.ios.kt`
+- Create: `composeApp/src/iosMain/kotlin/com/foxugly/pushit_app/platform/QrScanner.ios.kt`
+- Create: `composeApp/src/iosMain/kotlin/com/foxugly/pushit_app/data/storage/TokenStorage.ios.kt` (already created in Task 3)
+- Modify: `composeApp/src/iosMain/kotlin/com/foxugly/pushit_app/MainViewController.kt`
 - Modify: `iosApp/iosApp/iOSApp.swift`
 
 - [ ] **Step 1: Create iOS FcmTokenProvider**
 
-Create `composeApp/src/iosMain/kotlin/com/foxugly/pustit_app/platform/FcmTokenProvider.ios.kt`:
+Create `composeApp/src/iosMain/kotlin/com/foxugly/pushit_app/platform/FcmTokenProvider.ios.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.platform
+package com.foxugly.pushit_app.platform
 
 actual class FcmTokenProvider {
 
@@ -2749,10 +2749,10 @@ actual class FcmTokenProvider {
 
 - [ ] **Step 2: Create iOS QrScanner composable**
 
-Create `composeApp/src/iosMain/kotlin/com/foxugly/pustit_app/platform/QrScanner.ios.kt`:
+Create `composeApp/src/iosMain/kotlin/com/foxugly/pushit_app/platform/QrScanner.ios.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app.platform
+package com.foxugly.pushit_app.platform
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
@@ -2842,14 +2842,14 @@ actual fun QrScannerView(
 
 - [ ] **Step 3: Update MainViewController.kt**
 
-Replace `composeApp/src/iosMain/kotlin/com/foxugly/pustit_app/MainViewController.kt`:
+Replace `composeApp/src/iosMain/kotlin/com/foxugly/pushit_app/MainViewController.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app
+package com.foxugly.pushit_app
 
 import androidx.compose.ui.window.ComposeUIViewController
-import com.foxugly.pustit_app.data.storage.TokenStorage
-import com.foxugly.pustit_app.platform.FcmTokenProvider
+import com.foxugly.pushit_app.data.storage.TokenStorage
+import com.foxugly.pushit_app.platform.FcmTokenProvider
 
 fun MainViewController() = ComposeUIViewController {
     App(
@@ -2945,14 +2945,14 @@ git commit -m "feat: add iOS FCM token provider, AVFoundation QR scanner, and Fi
 ## Task 13: Foreground Push Refresh (Android)
 
 **Files:**
-- Modify: `composeApp/src/androidMain/kotlin/com/foxugly/pustit_app/MainActivity.kt`
+- Modify: `composeApp/src/androidMain/kotlin/com/foxugly/pushit_app/MainActivity.kt`
 
 - [ ] **Step 1: Add broadcast receiver for foreground notification refresh**
 
-Replace `composeApp/src/androidMain/kotlin/com/foxugly/pustit_app/MainActivity.kt`:
+Replace `composeApp/src/androidMain/kotlin/com/foxugly/pushit_app/MainActivity.kt`:
 
 ```kotlin
-package com.foxugly.pustit_app
+package com.foxugly.pushit_app
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -2964,8 +2964,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
-import com.foxugly.pustit_app.data.storage.TokenStorage
-import com.foxugly.pustit_app.platform.FcmTokenProvider
+import com.foxugly.pushit_app.data.storage.TokenStorage
+import com.foxugly.pushit_app.platform.FcmTokenProvider
 
 class MainActivity : ComponentActivity() {
 
@@ -3014,7 +3014,7 @@ Note: The `refreshTrigger` from the broadcast needs to be passed into `App()`. U
 
 Update `App.kt` — add `refreshTrigger` parameter:
 
-In `composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/App.kt`, change the signature to:
+In `composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/App.kt`, change the signature to:
 
 ```kotlin
 @Composable
@@ -3055,8 +3055,8 @@ Expected: BUILD SUCCESSFUL
 - [ ] **Step 3: Commit**
 
 ```bash
-git add composeApp/src/androidMain/kotlin/com/foxugly/pustit_app/MainActivity.kt \
-       composeApp/src/commonMain/kotlin/com/foxugly/pustit_app/App.kt
+git add composeApp/src/androidMain/kotlin/com/foxugly/pushit_app/MainActivity.kt \
+       composeApp/src/commonMain/kotlin/com/foxugly/pushit_app/App.kt
 git commit -m "feat: add foreground push notification refresh via broadcast receiver"
 ```
 

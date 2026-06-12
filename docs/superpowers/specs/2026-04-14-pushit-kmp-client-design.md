@@ -4,7 +4,7 @@
 
 Kotlin Multiplatform mobile client for the PushIT Server (Django REST API). Receives push notifications via Firebase Cloud Messaging, registers devices with the backend, and displays notifications in a list. Targets Android and iOS with shared Compose Multiplatform UI.
 
-Package: `com.foxugly.pustit_app`
+Package: `com.foxugly.pushit_app`
 Backend base URL: `http://127.0.0.1:8000/api/v1/`
 
 ## Scope
@@ -21,7 +21,7 @@ Single `composeApp` module. No separate shared library module.
 
 ```
 composeApp/src/
-├── commonMain/kotlin/com/foxugly/pustit_app/
+├── commonMain/kotlin/com/foxugly/pushit_app/
 │   ├── App.kt                              # Root composable, navigation state
 │   ├── navigation/
 │   │   └── Screen.kt                       # sealed class Screen
@@ -47,7 +47,7 @@ composeApp/src/
 │       ├── FcmTokenProvider.kt             # expect class
 │       └── DeviceLinkManager.kt            # Coordinates link call
 │
-├── androidMain/kotlin/com/foxugly/pustit_app/
+├── androidMain/kotlin/com/foxugly/pushit_app/
 │   ├── platform/
 │   │   ├── QrScanner.android.kt            # CameraX + ML Kit
 │   │   ├── FcmTokenProvider.android.kt
@@ -55,7 +55,7 @@ composeApp/src/
 │   ├── PushItFirebaseService.kt            # FirebaseMessagingService
 │   └── MainActivity.kt
 │
-├── iosMain/kotlin/com/foxugly/pustit_app/
+├── iosMain/kotlin/com/foxugly/pushit_app/
 │   ├── platform/
 │   │   ├── QrScanner.ios.kt                # AVFoundation
 │   │   ├── FcmTokenProvider.ios.kt
