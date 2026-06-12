@@ -72,8 +72,11 @@ n'a pas encore de remote `Foxugly/PushIT_frontend`).
 ## 🟠 P1 — Restants (décision / infra)
 
 - [x] ~~**Turnstile vs mobile**~~ → **tranché : mobile login-only** (voir ci-dessus).
-- [ ] **Remote + push** *(action Renaud)* — créer le remote `Foxugly/PushIT_frontend` et pousser ; le workflow
-  CI (`.github/workflows/ci.yml`) ne s'exécutera qu'ensuite. Pour le job APK, fournir le secret `GOOGLE_SERVICES_JSON_B64` + la var `HAS_FIREBASE_SECRET=true`.
+- [x] ~~**Remote + push**~~ → **fait** : poussé sur **`Foxugly/PushIT_app`** (public, `main`), historique
+  scrubé de `google-services.json` avant push, CI vert. *(NB : `Foxugly/PushIT_frontend` est le frontend
+  **web Angular** de PushIT — projet distinct, pas l'app mobile.)*
+- [ ] **CI build APK** *(action Renaud, optionnel)* — pour activer le job `build-debug-apk`, ajouter le secret
+  `GOOGLE_SERVICES_JSON_B64` + la variable repo `HAS_FIREBASE_SECRET=true`.
 - [ ] **Couverture de tests (suite)** — `AuthInterceptor`/`PushItApi` 401 couverts ; reste à tester
   `AuthRepository`, `NotificationRepository`, `DeviceLinkManager` (le seam `TokenStore` + `MockEngine` est désormais en place).
 - [ ] **Unlink côté serveur** — le bouton « Unlink this device » efface l'app-token *local* uniquement ;
