@@ -18,3 +18,11 @@ captures
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
 .superpowers/
+
+# Firebase config — provided out-of-band, never committed (holds the API key).
+**/google-services.json
+**/GoogleService-Info.plist
+
+# Stray local artifacts
+*.bak
+emulator-screen.png
