@@ -11,14 +11,15 @@ class AuthRepository(
     private val tag = "PushIT/AuthRepository"
 
     suspend fun login(email: String, password: String): Result<UserProfile> {
-        AppLogger.info(tag, "Login requested for email=$email")
+        // Don't log the email — it's PII and would land in Logcat.
+        AppLogger.info(tag, "Login requested")
         return api.login(LoginRequest(email, password)).map { response ->
             tokenStorage.setAccessToken(response.access)
             tokenStorage.setRefreshToken(response.refresh)
             AppLogger.info(tag, "Login succeeded for user=${response.user.id}")
             response.user
         }.onFailure {
-            AppLogger.error(tag, "Login failed for email=$email: ${it.message}", it)
+            AppLogger.error(tag, "Login failed: ${it.message}", it)
         }
     }
 

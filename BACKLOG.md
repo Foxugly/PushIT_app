@@ -110,7 +110,7 @@ plateforme Android/iOS, build/tests/hygiène). Sévérités : **P0** bloquant ·
 - [ ] Logique métier (décision QrScanner vs List) dans `App.kt` → extraire un `SessionViewModel`/use-case.
 
 **Sécurité / divers**
-- [ ] Email loggé en clair au login (`AuthRepository.login`) — PII Logcat ; conditionner à un flag debug (commonMain n'a pas de `BuildConfig`).
+- [x] ~~Email loggé en clair au login~~ → **fait** : email retiré des logs de `AuthRepository.login` (PII).
 - [ ] Pas de certificate pinning (à considérer pour une app prod manipulant des JWT).
 - [ ] Pagination : suivre l'URL `next` plutôt que `?page=n` (P3 ; DRF est en PageNumber, OK aujourd'hui).
 - [ ] `versionCode`/`versionName` figés (Android + iOS `Config.xcconfig` `TEAM_ID` vide).
