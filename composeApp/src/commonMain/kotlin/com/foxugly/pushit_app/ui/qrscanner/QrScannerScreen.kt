@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import com.foxugly.pushit_app.data.storage.TokenStorage
 import com.foxugly.pushit_app.platform.QrScannerView
 import com.foxugly.pushit_app.ui.components.ErrorBanner
+import com.foxugly.pushit_app.ui.i18n.LocalStrings
 import com.foxugly.pushit_app.ui.theme.pushItTopAppBarColors
 
 private const val APP_TOKEN_PREFIX = "apt_"
@@ -25,17 +26,18 @@ fun QrScannerScreen(
     var manualMode by remember { mutableStateOf(false) }
     var manualToken by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
+    val strings = LocalStrings.current
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Scan App Token") },
+                title = { Text(strings.scanAppToken) },
                 colors = pushItTopAppBarColors(),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = strings.back,
                         )
                     }
                 },
@@ -62,7 +64,7 @@ fun QrScannerScreen(
                                 tokenStorage.setAppToken(scanned)
                                 onTokenScanned()
                             } else {
-                                error = "Invalid QR code. Token must start with \"$APP_TOKEN_PREFIX\"."
+                                error = strings.invalidQrToken
                             }
                         },
                         onError = { errorMessage ->
@@ -89,7 +91,7 @@ fun QrScannerScreen(
                         .align(Alignment.CenterHorizontally)
                         .padding(bottom = 16.dp),
                 ) {
-                    Text("Enter token manually")
+                    Text(strings.enterManually)
                 }
             } else {
                 // Manual entry mode
@@ -101,7 +103,7 @@ fun QrScannerScreen(
                     verticalArrangement = Arrangement.Center,
                 ) {
                     Text(
-                        text = "Enter App Token",
+                        text = strings.enterAppToken,
                         style = MaterialTheme.typography.titleLarge,
                     )
                     Spacer(Modifier.height(24.dp))
@@ -112,7 +114,7 @@ fun QrScannerScreen(
                             manualToken = it
                             error = null
                         },
-                        label = { Text("Token (starts with apt_)") },
+                        label = { Text(strings.tokenFieldLabel) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         isError = error != null,
@@ -127,13 +129,13 @@ fun QrScannerScreen(
                                 tokenStorage.setAppToken(trimmed)
                                 onTokenScanned()
                             } else {
-                                error = "Token must start with \"$APP_TOKEN_PREFIX\"."
+                                error = strings.tokenMustStartWith
                             }
                         },
                         enabled = manualToken.isNotBlank(),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Save Token")
+                        Text(strings.saveToken)
                     }
                     Spacer(Modifier.height(16.dp))
 
@@ -144,7 +146,7 @@ fun QrScannerScreen(
                             manualMode = false
                         },
                     ) {
-                        Text("Back to scanner")
+                        Text(strings.backToScanner)
                     }
                 }
             }

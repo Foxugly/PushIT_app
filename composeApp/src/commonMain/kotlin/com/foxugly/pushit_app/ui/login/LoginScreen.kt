@@ -12,6 +12,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.foxugly.pushit_app.data.repository.AuthRepository
 import com.foxugly.pushit_app.ui.components.ErrorBanner
+import com.foxugly.pushit_app.ui.i18n.LocalStrings
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import pushit_app.composeapp.generated.resources.Res
@@ -27,6 +28,7 @@ fun LoginScreen(
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val strings = LocalStrings.current
 
     Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
     Column(
@@ -49,7 +51,7 @@ fun LoginScreen(
         OutlinedTextField(
             value = email,
             onValueChange = { email = it; error = null },
-            label = { Text("Email") },
+            label = { Text(strings.email) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
@@ -59,7 +61,7 @@ fun LoginScreen(
         OutlinedTextField(
             value = password,
             onValueChange = { password = it; error = null },
-            label = { Text("Password") },
+            label = { Text(strings.password) },
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             singleLine = true,
@@ -74,7 +76,7 @@ fun LoginScreen(
                     error = null
                     authRepository.login(email, password).fold(
                         onSuccess = { onLoginSuccess() },
-                        onFailure = { error = it.message ?: "Login failed" },
+                        onFailure = { error = it.message ?: strings.loginFailed },
                     )
                     isLoading = false
                 }
@@ -89,7 +91,7 @@ fun LoginScreen(
                     color = MaterialTheme.colorScheme.onPrimary,
                 )
             } else {
-                Text("Login")
+                Text(strings.login)
             }
         }
         Spacer(Modifier.height(16.dp))
@@ -97,7 +99,7 @@ fun LoginScreen(
         // Registration is web-only (the sign-up form is captcha-protected, which a
         // native screen can't satisfy). New users create an account on the dashboard.
         Text(
-            text = "New here? Create an account at pushit.foxugly.com",
+            text = strings.registerHint,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -109,7 +111,7 @@ fun LoginScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "by ",
+                text = strings.credit,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

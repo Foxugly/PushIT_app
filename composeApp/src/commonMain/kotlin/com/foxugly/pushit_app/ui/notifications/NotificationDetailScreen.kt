@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import com.foxugly.pushit_app.data.api.Notification
 import com.foxugly.pushit_app.data.repository.NotificationRepository
 import com.foxugly.pushit_app.ui.components.ErrorBanner
+import com.foxugly.pushit_app.ui.i18n.LocalStrings
 import com.foxugly.pushit_app.ui.theme.pushItTopAppBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,6 +28,7 @@ fun NotificationDetailScreen(
     var error by remember { mutableStateOf<String?>(null) }
     // Bump to re-run the loader (the Retry button) — the effect keys on it.
     var reloadKey by remember { mutableStateOf(0) }
+    val strings = LocalStrings.current
 
     LaunchedEffect(notificationId, reloadKey) {
         isLoading = true
@@ -37,7 +39,7 @@ fun NotificationDetailScreen(
                 error = null
             },
             onFailure = { throwable ->
-                error = throwable.message ?: "Failed to load notification"
+                error = throwable.message ?: strings.loadNotificationFailed
             },
         )
         isLoading = false
@@ -46,11 +48,11 @@ fun NotificationDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Notification") },
+                title = { Text(strings.notificationTitle) },
                 colors = pushItTopAppBarColors(),
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = strings.back)
                     }
                 },
             )
@@ -76,7 +78,7 @@ fun NotificationDetailScreen(
                         ErrorBanner(error!!)
                         Spacer(Modifier.height(16.dp))
                         Button(onClick = { reloadKey++ }) {
-                            Text("Retry")
+                            Text(strings.retry)
                         }
                     }
                 }
@@ -98,6 +100,7 @@ private fun NotificationDetailContent(
     error: String?,
     modifier: Modifier = Modifier,
 ) {
+    val strings = LocalStrings.current
     Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())
@@ -130,17 +133,18 @@ private fun NotificationDetailContent(
         Spacer(Modifier.height(12.dp))
 
         // Timestamps
-        LabeledTimestamp(label = "Created", timestamp = notification.createdAt)
+        LabeledTimestamp(label = strings.createdLabel, timestamp = notification.createdAt)
 
         notification.sentAt?.let { sentAt ->
             Spacer(Modifier.height(8.dp))
-            LabeledTimestamp(label = "Sent", timestamp = sentAt)
+            LabeledTimestamp(label = strings.sentLabel, timestamp = sentAt)
         }
     }
 }
 
 @Composable
 private fun LabeledTimestamp(label: String, timestamp: String) {
+    val strings = LocalStrings.current
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = "$label: ",
@@ -148,7 +152,7 @@ private fun LabeledTimestamp(label: String, timestamp: String) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            text = formatDetailTimestamp(timestamp),
+            text = formatDetailTimestamp(timestamp, strings.timestampAt),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -159,13 +163,13 @@ private fun LabeledTimestamp(label: String, timestamp: String) {
  * Formats an ISO-8601 timestamp for display in the detail screen.
  * Input format: "2024-01-15T10:30:00Z" or "2024-01-15T10:30:00.000000Z"
  */
-private fun formatDetailTimestamp(isoTimestamp: String): String {
+private fun formatDetailTimestamp(isoTimestamp: String, at: String): String {
     return try {
         val parts = isoTimestamp.split("T")
         if (parts.size < 2) return isoTimestamp
         val date = parts[0]
         val timePart = parts[1].substringBefore("Z").substringBefore("+").take(8) // "HH:mm:ss"
-        "$date at $timePart UTC"
+        "$date $at $timePart UTC"
     } catch (_: Exception) {
         isoTimestamp
     }

@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import com.foxugly.pushit_app.data.api.Notification
 import com.foxugly.pushit_app.data.repository.NotificationRepository
 import com.foxugly.pushit_app.ui.components.ErrorBanner
+import com.foxugly.pushit_app.ui.i18n.LocalStrings
 import com.foxugly.pushit_app.ui.theme.pushItTopAppBarColors
 import kotlinx.coroutines.launch
 
@@ -39,6 +40,7 @@ fun NotificationListScreen(
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val pullToRefreshState = rememberPullToRefreshState()
+    val strings = LocalStrings.current
 
     suspend fun loadPage(page: Int, replace: Boolean) {
         notificationRepository.getNotifications(page).fold(
@@ -54,7 +56,7 @@ fun NotificationListScreen(
                 error = null
             },
             onFailure = { throwable ->
-                error = throwable.message ?: "Failed to load notifications"
+                error = throwable.message ?: strings.loadNotificationsFailed
             },
         )
     }
@@ -98,11 +100,11 @@ fun NotificationListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Notifications") },
+                title = { Text(strings.notificationsTitle) },
                 colors = pushItTopAppBarColors(),
                 actions = {
                     IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        Icon(Icons.Default.Settings, contentDescription = strings.settingsAction)
                     }
                 },
             )
@@ -131,14 +133,14 @@ fun NotificationListScreen(
                         ErrorBanner(error!!)
                         Spacer(Modifier.height(16.dp))
                         Button(onClick = { scope.launch { refresh() } }) {
-                            Text("Retry")
+                            Text(strings.retry)
                         }
                     }
                 }
                 notifications.isEmpty() -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
-                            text = "No notifications yet",
+                            text = strings.noNotifications,
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

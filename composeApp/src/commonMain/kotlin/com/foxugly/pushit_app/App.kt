@@ -24,9 +24,13 @@ import com.foxugly.pushit_app.ui.components.ErrorBanner
 import com.foxugly.pushit_app.ui.login.LoginScreen
 import com.foxugly.pushit_app.ui.notifications.NotificationDetailScreen
 import com.foxugly.pushit_app.ui.notifications.NotificationListScreen
+import com.foxugly.pushit_app.ui.i18n.AppLanguage
+import com.foxugly.pushit_app.ui.i18n.LocalStrings
+import com.foxugly.pushit_app.ui.i18n.stringsFor
 import com.foxugly.pushit_app.ui.qrscanner.QrScannerScreen
 import com.foxugly.pushit_app.ui.settings.SettingsScreen
 import com.foxugly.pushit_app.ui.theme.PushItTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import kotlinx.coroutines.launch
 
 @Composable
@@ -50,6 +54,10 @@ fun App(
     val backStack = remember { mutableStateListOf<Screen>() }
     var refreshTrigger by remember { mutableStateOf(0) }
     var runtimeError by remember { mutableStateOf<String?>(null) }
+    // UI language: a local preference (persisted in TokenStorage), defaulting to
+    // the fleet default when unset. Changed from Settings.
+    var language by remember { mutableStateOf(AppLanguage.fromCode(tokenStorage.getLanguage())) }
+    val strings = stringsFor(language)
     val scope = rememberCoroutineScope()
 
     // Combine internal and external refresh triggers
@@ -101,7 +109,7 @@ fun App(
             }
         }.onFailure {
             AppLogger.error(TAG, "Startup flow failed", it)
-            runtimeError = it.message ?: "Startup failed"
+            runtimeError = it.message ?: strings.startupFailed
             currentScreen = Screen.Login
         }
     }
@@ -110,7 +118,7 @@ fun App(
     LaunchedEffect(currentScreen) {
         if (currentScreen == Screen.NotificationList) {
             deviceLinkManager.syncAuthenticatedDevice().onFailure {
-                runtimeError = it.message ?: "Device connection failed"
+                runtimeError = it.message ?: strings.deviceConnectionFailed
             }
         }
     }
@@ -121,7 +129,7 @@ fun App(
         deviceLinkManager.startObservingTokenChanges {
             scope.launch {
                 deviceLinkManager.syncAuthenticatedDevice().onFailure { throwable ->
-                    runtimeError = throwable.message ?: "Device connection failed"
+                    runtimeError = throwable.message ?: strings.deviceConnectionFailed
                 }
             }
         }
@@ -131,7 +139,7 @@ fun App(
     fun onLoginOrRegisterSuccess() {
         scope.launch {
             val state = deviceLinkManager.syncAuthenticatedDevice().getOrElse {
-                runtimeError = it.message ?: "Device connection failed"
+                runtimeError = it.message ?: strings.deviceConnectionFailed
                 null
             }
             val hasKnownLinkedApps = state?.linkedApplications?.isNotEmpty() == true
@@ -144,12 +152,13 @@ fun App(
     }
 
     PushItTheme {
+        CompositionLocalProvider(LocalStrings provides strings) {
         val screen = currentScreen
         if (screen == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
-            return@PushItTheme
+            return@CompositionLocalProvider
         }
 
         Column(Modifier.fillMaxSize()) {
@@ -176,7 +185,7 @@ fun App(
                             // link failure surfaced on an already-different screen.
                             scope.launch {
                                 deviceLinkManager.linkWithStoredAppToken().onFailure { throwable ->
-                                    runtimeError = throwable.message ?: "Device link failed"
+                                    runtimeError = throwable.message ?: strings.deviceLinkFailed
                                 }
                                 resetTo(
                                     if (authRepository.isAuthenticated()) Screen.NotificationList
@@ -201,12 +210,18 @@ fun App(
                         authRepository = authRepository,
                         tokenStorage = tokenStorage,
                         deviceLinkManager = deviceLinkManager,
+                        language = language,
+                        onLanguageChange = { selected ->
+                            language = selected
+                            tokenStorage.setLanguage(selected.code)
+                        },
                         onNavigateToQrScanner = { navigateTo(Screen.QrScanner) },
                         onLogout = { resetTo(Screen.Login) },
                         onBack = { navigateBack() },
                     )
                 }
             }
+        }
         }
     }
 }

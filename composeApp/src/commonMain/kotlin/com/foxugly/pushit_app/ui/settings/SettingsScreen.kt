@@ -13,6 +13,8 @@ import com.foxugly.pushit_app.data.repository.AuthRepository
 import com.foxugly.pushit_app.data.storage.TokenStorage
 import com.foxugly.pushit_app.platform.DeviceLinkManager
 import com.foxugly.pushit_app.ui.components.ErrorBanner
+import com.foxugly.pushit_app.ui.i18n.AppLanguage
+import com.foxugly.pushit_app.ui.i18n.LocalStrings
 import com.foxugly.pushit_app.ui.theme.pushItTopAppBarColors
 import kotlinx.coroutines.launch
 
@@ -22,10 +24,13 @@ fun SettingsScreen(
     authRepository: AuthRepository,
     tokenStorage: TokenStorage,
     deviceLinkManager: DeviceLinkManager,
+    language: AppLanguage,
+    onLanguageChange: (AppLanguage) -> Unit,
     onNavigateToQrScanner: () -> Unit,
     onLogout: () -> Unit,
     onBack: () -> Unit,
 ) {
+    val strings = LocalStrings.current
     var userProfile by remember { mutableStateOf<UserProfile?>(null) }
     var userError by remember { mutableStateOf<String?>(null) }
     var isLoadingUser by remember { mutableStateOf(true) }
@@ -43,7 +48,7 @@ fun SettingsScreen(
                 userError = null
             },
             onFailure = { throwable ->
-                userError = throwable.message ?: "Failed to load user info"
+                userError = throwable.message ?: strings.loadUserFailed
             },
         )
         isLoadingUser = false
@@ -52,13 +57,13 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(strings.settingsTitle) },
                 colors = pushItTopAppBarColors(),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = strings.back,
                         )
                     }
                 },
@@ -75,7 +80,7 @@ fun SettingsScreen(
 
             // User info section
             Text(
-                text = "Account",
+                text = strings.account,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -96,10 +101,10 @@ fun SettingsScreen(
                         ),
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            LabeledValue(label = "Email", value = userProfile!!.email)
+                            LabeledValue(label = strings.email, value = userProfile!!.email)
                             userProfile!!.userkey?.let { key ->
                                 Spacer(Modifier.height(8.dp))
-                                LabeledValue(label = "User key", value = key)
+                                LabeledValue(label = strings.userKey, value = key)
                             }
                         }
                     }
@@ -110,9 +115,32 @@ fun SettingsScreen(
             HorizontalDivider()
             Spacer(Modifier.height(24.dp))
 
+            // Language section
+            Text(
+                text = strings.language,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.height(8.dp))
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                AppLanguage.entries.forEachIndexed { index, lang ->
+                    SegmentedButton(
+                        selected = lang == language,
+                        onClick = { onLanguageChange(lang) },
+                        shape = SegmentedButtonDefaults.itemShape(index, AppLanguage.entries.size),
+                    ) {
+                        Text(lang.code.uppercase())
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(24.dp))
+
             // App token section
             Text(
-                text = "App Token",
+                text = strings.appTokenSection,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -127,20 +155,19 @@ fun SettingsScreen(
                 Column(modifier = Modifier.padding(16.dp)) {
                     val tokenDisplay = appToken
                     if (tokenDisplay != null) {
-                        // Show a truncated version: "Linked (apt_xxxx...)"
                         val truncated = if (tokenDisplay.length > 12) {
                             tokenDisplay.take(12) + "..."
                         } else {
                             tokenDisplay
                         }
                         Text(
-                            text = "Linked ($truncated)",
+                            text = "${strings.linkedPrefix} ($truncated)",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     } else {
                         Text(
-                            text = "Not linked to an application",
+                            text = strings.notLinked,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -156,12 +183,12 @@ fun SettingsScreen(
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(if (appToken != null) "Re-scan QR Code" else "Scan QR Code")
+                Text(if (appToken != null) strings.rescanQr else strings.scanQr)
             }
 
             // Unlink: forget the app token on this device (e.g. shared/returned
             // device). The token survives a normal logout by design; this is the
-            // explicit opt-out. Server-side unlink is a separate backlog item.
+            // explicit opt-out.
             if (appToken != null) {
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(
@@ -172,7 +199,7 @@ fun SettingsScreen(
                             unlinkError = null
                             deviceLinkManager.unlinkCurrentDevice().fold(
                                 onSuccess = { appToken = null },
-                                onFailure = { unlinkError = it.message ?: "Unlink failed" },
+                                onFailure = { unlinkError = it.message ?: strings.unlinkFailed },
                             )
                             isUnlinking = false
                         }
@@ -182,7 +209,7 @@ fun SettingsScreen(
                     if (isUnlinking) {
                         CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                     } else {
-                        Text("Unlink this device")
+                        Text(strings.unlinkDevice)
                     }
                 }
                 unlinkError?.let {
@@ -219,7 +246,7 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onError,
                     )
                 } else {
-                    Text("Logout")
+                    Text(strings.logout)
                 }
             }
         }

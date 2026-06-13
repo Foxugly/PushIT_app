@@ -8,10 +8,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.foxugly.pushit_app.ui.i18n.LocalStrings
 
 @Composable
 fun StatusBadge(status: String, modifier: Modifier = Modifier) {
     val colorScheme = MaterialTheme.colorScheme
+    val label = LocalStrings.current.statusLabel(status)
     val (containerColor, contentColor) = when (status.lowercase()) {
         "delivered" -> colorScheme.primaryContainer to colorScheme.onPrimaryContainer
         "sent" -> colorScheme.tertiaryContainer to colorScheme.onTertiaryContainer
@@ -30,7 +32,7 @@ fun StatusBadge(status: String, modifier: Modifier = Modifier) {
         shape = MaterialTheme.shapes.small,
     ) {
         Text(
-            text = status,
+            text = label,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
             color = contentColor,
             style = MaterialTheme.typography.labelSmall,

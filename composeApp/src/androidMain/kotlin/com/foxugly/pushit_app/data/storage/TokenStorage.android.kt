@@ -31,6 +31,11 @@ actual class TokenStorage(context: Context) {
         writeToken(KEY_APP_TOKEN, token)
     }
 
+    actual fun getLanguage(): String? = readToken(KEY_LANGUAGE)
+    actual fun setLanguage(code: String?) {
+        writeToken(KEY_LANGUAGE, code)
+    }
+
     actual fun clearAuthTokens() {
         runCatching {
             prefs.edit()
@@ -67,5 +72,6 @@ actual class TokenStorage(context: Context) {
         private const val KEY_ACCESS = "access_token"
         private const val KEY_REFRESH = "refresh_token"
         private const val KEY_APP_TOKEN = "app_token"
+        private const val KEY_LANGUAGE = "ui_language"
     }
 }
