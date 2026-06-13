@@ -75,28 +75,53 @@ Open `iosApp/` in Xcode and run.
 
 The `release` build type runs **R8** (code shrinking + obfuscation, `isMinifyEnabled = true`,
 keep-rules in `androidApp/proguard-rules.pro`). Signing is wired but the keystore is **provided
-out-of-band** — it is never committed (`*.jks` / `keystore.properties` are git-ignored).
+out-of-band** — it is never committed (`*.jks` / `keystore.properties` are git-ignored). Without a
+keystore the release build still runs R8 and produces `androidApp-release-unsigned.apk` (useful to
+validate the minified build).
 
-1. Create a release keystore (once):
-   ```bash
-   keytool -genkeypair -v -keystore pushit-release.jks -alias pushit \
-     -keyalg RSA -keysize 2048 -validity 10000
-   ```
-2. Add a git-ignored `keystore.properties` at the repo root (or set the same names as env vars in CI):
-   ```properties
-   RELEASE_STORE_FILE=/abs/path/to/pushit-release.jks
-   RELEASE_STORE_PASSWORD=…
-   RELEASE_KEY_ALIAS=pushit
-   RELEASE_KEY_PASSWORD=…
-   ```
-3. Build:
-   ```bash
-   ./gradlew :androidApp:assembleRelease   # signed when keystore.properties is present, else unsigned
-   ```
-4. Add the release keystore's **SHA-1** to the Firebase API key restriction (see *Securing the Firebase API key*).
+#### 1. Create the release keystore (once)
 
-> Without `keystore.properties` the release build still runs R8 and produces
-> `androidApp-release-unsigned.apk` — useful for validating the minified build.
+```powershell
+keytool -genkeypair -v `
+  -keystore pushit-release.jks `
+  -alias pushit `
+  -keyalg RSA -keysize 2048 -validity 10000 `
+  -dname "CN=Foxugly SRL, O=Foxugly SRL, C=BE"
+```
+`keytool` prompts for a keystore password (you may reuse it for the key).
+
+> 🔐 **Back up `pushit-release.jks` and its passwords** (password manager + offline copy). Strongly
+> recommended: **enrol the app in Play App Signing** — Google then holds the real app-signing key and
+> this `.jks` is only a *replaceable upload key*. Without Play App Signing, losing this keystore means
+> you can never publish an update again. Store the keystore **outside the repo**.
+
+#### 2. Point the build at it
+
+Create a git-ignored `keystore.properties` at the repo root (or set the same names as env vars in CI):
+```properties
+RELEASE_STORE_FILE=C:/abs/path/to/pushit-release.jks
+RELEASE_STORE_PASSWORD=…
+RELEASE_KEY_ALIAS=pushit
+RELEASE_KEY_PASSWORD=…
+```
+Then build a **signed** release:
+```powershell
+.\gradlew.bat :androidApp:assembleRelease
+```
+
+#### 3. Restrict the Firebase API key to the release SHA-1
+
+Get the release SHA-1:
+```powershell
+keytool -list -v -keystore pushit-release.jks -alias pushit
+```
+Copy the `SHA1:` line, then in GCP Console → project `pushit-dcf8a` → **APIs & Services → Credentials**
+→ the Android API key → **Application restrictions → Android apps → Add an item**: package
+`com.foxugly.pushit_app` + the release SHA-1 (keep the debug entry alongside it). See
+*Securing the Firebase API key* above.
+
+*(Optional: also add the SHA-1 in Firebase Console → Project settings → your Android app → Add fingerprint
+— needed only if you later enable App Check / Auth / Dynamic Links, not for basic FCM.)*
 
 ## Usage
 
