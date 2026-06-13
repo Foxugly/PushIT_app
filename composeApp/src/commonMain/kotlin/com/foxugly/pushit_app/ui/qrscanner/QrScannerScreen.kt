@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import com.foxugly.pushit_app.data.storage.TokenStorage
 import com.foxugly.pushit_app.platform.QrScannerView
 import com.foxugly.pushit_app.ui.components.ErrorBanner
+import com.foxugly.pushit_app.ui.theme.pushItTopAppBarColors
 
 private const val APP_TOKEN_PREFIX = "apt_"
 
@@ -29,6 +30,7 @@ fun QrScannerScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Scan App Token") },
+                colors = pushItTopAppBarColors(),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(

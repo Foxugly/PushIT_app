@@ -13,6 +13,7 @@ import com.foxugly.pushit_app.data.repository.AuthRepository
 import com.foxugly.pushit_app.data.storage.TokenStorage
 import com.foxugly.pushit_app.platform.DeviceLinkManager
 import com.foxugly.pushit_app.ui.components.ErrorBanner
+import com.foxugly.pushit_app.ui.theme.pushItTopAppBarColors
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,6 +53,7 @@ fun SettingsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Settings") },
+                colors = pushItTopAppBarColors(),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(

@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,6 +26,7 @@ import com.foxugly.pushit_app.ui.notifications.NotificationDetailScreen
 import com.foxugly.pushit_app.ui.notifications.NotificationListScreen
 import com.foxugly.pushit_app.ui.qrscanner.QrScannerScreen
 import com.foxugly.pushit_app.ui.settings.SettingsScreen
+import com.foxugly.pushit_app.ui.theme.PushItTheme
 import kotlinx.coroutines.launch
 
 @Composable
@@ -143,13 +143,13 @@ fun App(
         }
     }
 
-    MaterialTheme {
+    PushItTheme {
         val screen = currentScreen
         if (screen == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
-            return@MaterialTheme
+            return@PushItTheme
         }
 
         Column(Modifier.fillMaxSize()) {

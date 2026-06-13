@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import com.foxugly.pushit_app.data.api.Notification
 import com.foxugly.pushit_app.data.repository.NotificationRepository
 import com.foxugly.pushit_app.ui.components.ErrorBanner
+import com.foxugly.pushit_app.ui.theme.pushItTopAppBarColors
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -98,6 +99,7 @@ fun NotificationListScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Notifications") },
+                colors = pushItTopAppBarColors(),
                 actions = {
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings")

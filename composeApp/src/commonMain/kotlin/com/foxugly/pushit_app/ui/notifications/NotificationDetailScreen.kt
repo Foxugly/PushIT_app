@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import com.foxugly.pushit_app.data.api.Notification
 import com.foxugly.pushit_app.data.repository.NotificationRepository
 import com.foxugly.pushit_app.ui.components.ErrorBanner
+import com.foxugly.pushit_app.ui.theme.pushItTopAppBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +47,7 @@ fun NotificationDetailScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Notification") },
+                colors = pushItTopAppBarColors(),
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

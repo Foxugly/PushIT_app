@@ -34,7 +34,11 @@ fun LoginScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(text = "PushIT", style = MaterialTheme.typography.headlineLarge)
+        Text(
+            text = "PushIT",
+            style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
         Spacer(Modifier.height(32.dp))
 
         error?.let {
