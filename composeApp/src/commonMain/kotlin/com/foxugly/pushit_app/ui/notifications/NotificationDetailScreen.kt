@@ -14,6 +14,7 @@ import com.foxugly.pushit_app.data.api.Notification
 import com.foxugly.pushit_app.data.repository.NotificationRepository
 import com.foxugly.pushit_app.ui.components.ErrorBanner
 import com.foxugly.pushit_app.ui.i18n.LocalStrings
+import com.foxugly.pushit_app.ui.i18n.errorText
 import com.foxugly.pushit_app.ui.theme.pushItTopAppBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,7 +40,7 @@ fun NotificationDetailScreen(
                 error = null
             },
             onFailure = { throwable ->
-                error = throwable.message ?: strings.loadNotificationFailed
+                error = strings.errorText(throwable, strings.loadNotificationFailed)
             },
         )
         isLoading = false

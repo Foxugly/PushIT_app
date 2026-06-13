@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import com.foxugly.pushit_app.data.repository.AuthRepository
 import com.foxugly.pushit_app.ui.components.ErrorBanner
 import com.foxugly.pushit_app.ui.i18n.LocalStrings
+import com.foxugly.pushit_app.ui.i18n.errorText
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import pushit_app.composeapp.generated.resources.Res
@@ -76,7 +77,7 @@ fun LoginScreen(
                     error = null
                     authRepository.login(email, password).fold(
                         onSuccess = { onLoginSuccess() },
-                        onFailure = { error = it.message ?: strings.loginFailed },
+                        onFailure = { error = strings.errorText(it, strings.loginFailed) },
                     )
                     isLoading = false
                 }

@@ -1,6 +1,8 @@
 package com.foxugly.pushit_app.ui.i18n
 
 import androidx.compose.runtime.staticCompositionLocalOf
+import com.foxugly.pushit_app.data.api.NetworkErrorKind
+import com.foxugly.pushit_app.data.api.NetworkException
 
 /**
  * All user-facing UI strings, one immutable instance per [AppLanguage] (FR/NL/EN).
@@ -59,11 +61,25 @@ data class Strings(
     val startupFailed: String,
     val deviceConnectionFailed: String,
     val deviceLinkFailed: String,
+    // Transport errors (NetworkException)
+    val networkOffline: String,
+    val networkTimeout: String,
     // Notification status badges (lowercase backend value -> label)
     val statusLabels: Map<String, String>,
 ) {
     /** Localized label for a backend status string, falling back to the raw value. */
     fun statusLabel(raw: String): String = statusLabels[raw.lowercase()] ?: raw
+}
+
+/**
+ * Localized text for an error surfaced to the UI: transport failures
+ * ([NetworkException]) become a localized message; anything else keeps its own
+ * message, falling back to [fallback]. Keeps the data layer language-agnostic.
+ */
+fun Strings.errorText(throwable: Throwable, fallback: String): String = when {
+    throwable is NetworkException && throwable.kind == NetworkErrorKind.TIMEOUT -> networkTimeout
+    throwable is NetworkException -> networkOffline
+    else -> throwable.message ?: fallback
 }
 
 private val FR = Strings(
@@ -108,6 +124,8 @@ private val FR = Strings(
     startupFailed = "Échec du démarrage",
     deviceConnectionFailed = "Échec de la connexion de l'appareil",
     deviceLinkFailed = "Échec de l'association de l'appareil",
+    networkOffline = "Impossible de joindre le serveur.",
+    networkTimeout = "La requête a expiré.",
     statusLabels = mapOf(
         "pending" to "en attente",
         "scheduled" to "planifiée",
@@ -165,6 +183,8 @@ private val NL = Strings(
     startupFailed = "Opstarten mislukt",
     deviceConnectionFailed = "Verbinden van toestel mislukt",
     deviceLinkFailed = "Koppelen van toestel mislukt",
+    networkOffline = "Kan de server niet bereiken.",
+    networkTimeout = "De aanvraag is verlopen.",
     statusLabels = mapOf(
         "pending" to "in afwachting",
         "scheduled" to "gepland",
@@ -222,6 +242,8 @@ private val EN = Strings(
     startupFailed = "Startup failed",
     deviceConnectionFailed = "Device connection failed",
     deviceLinkFailed = "Device link failed",
+    networkOffline = "Could not reach the server.",
+    networkTimeout = "The request timed out.",
     statusLabels = mapOf(
         "pending" to "pending",
         "scheduled" to "scheduled",

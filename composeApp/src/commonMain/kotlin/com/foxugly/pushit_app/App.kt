@@ -26,6 +26,7 @@ import com.foxugly.pushit_app.ui.notifications.NotificationDetailScreen
 import com.foxugly.pushit_app.ui.notifications.NotificationListScreen
 import com.foxugly.pushit_app.ui.i18n.AppLanguage
 import com.foxugly.pushit_app.ui.i18n.LocalStrings
+import com.foxugly.pushit_app.ui.i18n.errorText
 import com.foxugly.pushit_app.ui.i18n.stringsFor
 import com.foxugly.pushit_app.ui.qrscanner.QrScannerScreen
 import com.foxugly.pushit_app.ui.settings.SettingsScreen
@@ -109,7 +110,7 @@ fun App(
             }
         }.onFailure {
             AppLogger.error(TAG, "Startup flow failed", it)
-            runtimeError = it.message ?: strings.startupFailed
+            runtimeError = strings.errorText(it, strings.startupFailed)
             currentScreen = Screen.Login
         }
     }
@@ -118,7 +119,7 @@ fun App(
     LaunchedEffect(currentScreen) {
         if (currentScreen == Screen.NotificationList) {
             deviceLinkManager.syncAuthenticatedDevice().onFailure {
-                runtimeError = it.message ?: strings.deviceConnectionFailed
+                runtimeError = strings.errorText(it, strings.deviceConnectionFailed)
             }
         }
     }
@@ -129,7 +130,7 @@ fun App(
         deviceLinkManager.startObservingTokenChanges {
             scope.launch {
                 deviceLinkManager.syncAuthenticatedDevice().onFailure { throwable ->
-                    runtimeError = throwable.message ?: strings.deviceConnectionFailed
+                    runtimeError = strings.errorText(throwable, strings.deviceConnectionFailed)
                 }
             }
         }
@@ -139,7 +140,7 @@ fun App(
     fun onLoginOrRegisterSuccess() {
         scope.launch {
             val state = deviceLinkManager.syncAuthenticatedDevice().getOrElse {
-                runtimeError = it.message ?: strings.deviceConnectionFailed
+                runtimeError = strings.errorText(it, strings.deviceConnectionFailed)
                 null
             }
             val hasKnownLinkedApps = state?.linkedApplications?.isNotEmpty() == true
@@ -185,7 +186,7 @@ fun App(
                             // link failure surfaced on an already-different screen.
                             scope.launch {
                                 deviceLinkManager.linkWithStoredAppToken().onFailure { throwable ->
-                                    runtimeError = throwable.message ?: strings.deviceLinkFailed
+                                    runtimeError = strings.errorText(throwable, strings.deviceLinkFailed)
                                 }
                                 resetTo(
                                     if (authRepository.isAuthenticated()) Screen.NotificationList

@@ -169,8 +169,8 @@ class PushItApi(
         throw when (throwable) {
             is HttpRequestTimeoutException,
             is ConnectTimeoutException,
-            is SocketTimeoutException -> NetworkException("The request timed out.", throwable)
-            is IOException -> NetworkException("Could not reach the server.", throwable)
+            is SocketTimeoutException -> NetworkException(NetworkErrorKind.TIMEOUT, "The request timed out.", throwable)
+            is IOException -> NetworkException(NetworkErrorKind.OFFLINE, "Could not reach the server.", throwable)
             else -> throwable
         }
     }.onFailure {
@@ -278,7 +278,11 @@ class ApiException(
 
 /** A transport-level failure (offline, DNS, timeout) — distinct from an HTTP
  * status error ([ApiException]) so the UI can show "check your connection". */
+/** Transport failure kind, so the UI can show a localized message per case. */
+enum class NetworkErrorKind { OFFLINE, TIMEOUT }
+
 class NetworkException(
+    val kind: NetworkErrorKind,
     message: String,
     cause: Throwable,
 ) : Exception(message, cause)

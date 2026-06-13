@@ -18,6 +18,7 @@ import com.foxugly.pushit_app.data.api.Notification
 import com.foxugly.pushit_app.data.repository.NotificationRepository
 import com.foxugly.pushit_app.ui.components.ErrorBanner
 import com.foxugly.pushit_app.ui.i18n.LocalStrings
+import com.foxugly.pushit_app.ui.i18n.errorText
 import com.foxugly.pushit_app.ui.theme.pushItTopAppBarColors
 import kotlinx.coroutines.launch
 
@@ -56,7 +57,7 @@ fun NotificationListScreen(
                 error = null
             },
             onFailure = { throwable ->
-                error = throwable.message ?: strings.loadNotificationsFailed
+                error = strings.errorText(throwable, strings.loadNotificationsFailed)
             },
         )
     }

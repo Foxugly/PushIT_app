@@ -15,6 +15,7 @@ import com.foxugly.pushit_app.platform.DeviceLinkManager
 import com.foxugly.pushit_app.ui.components.ErrorBanner
 import com.foxugly.pushit_app.ui.i18n.AppLanguage
 import com.foxugly.pushit_app.ui.i18n.LocalStrings
+import com.foxugly.pushit_app.ui.i18n.errorText
 import com.foxugly.pushit_app.ui.theme.pushItTopAppBarColors
 import kotlinx.coroutines.launch
 
@@ -48,7 +49,7 @@ fun SettingsScreen(
                 userError = null
             },
             onFailure = { throwable ->
-                userError = throwable.message ?: strings.loadUserFailed
+                userError = strings.errorText(throwable, strings.loadUserFailed)
             },
         )
         isLoadingUser = false
@@ -199,7 +200,7 @@ fun SettingsScreen(
                             unlinkError = null
                             deviceLinkManager.unlinkCurrentDevice().fold(
                                 onSuccess = { appToken = null },
-                                onFailure = { unlinkError = it.message ?: strings.unlinkFailed },
+                                onFailure = { unlinkError = strings.errorText(it, strings.unlinkFailed) },
                             )
                             isUnlinking = false
                         }
