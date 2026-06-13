@@ -66,9 +66,11 @@ plateforme Android/iOS, build/tests/hygiène). Sévérités : **P0** bloquant ·
     `mapping.txt` généré, APK minifié produit).
   - [x] **`signingConfig` release conditionnel** — lit `keystore.properties` (racine, git-ignoré) ou env ;
     absent → release non signé mais minifié (validable). `*.jks`/`keystore.properties` git-ignorés. Doc README.
+  - [x] **Smoke-test runtime du build minifié** (émulateur Pixel_7, 2026-06-13) : APK release minifié
+    (debug-signé pour le test) installé + lancé → démarre sans crash, FCM token récupéré, permission
+    POST_NOTIFICATIONS demandée, écran login rendu. R8 + keep-rules validés à l'exécution.
   - [ ] **Reste (action Renaud)** : créer le keystore release + `keystore.properties` (cf. README), puis
-    ajouter son **SHA-1** à la restriction de clé Firebase. **+ smoke-test runtime de l'APK minifié sur
-    device/émulateur** (R8 validé au build, mais la (dé)sérialisation kotlinx mérite une vérif à l'exécution).
+    ajouter son **SHA-1** à la restriction de clé Firebase.
 
 ---
 
