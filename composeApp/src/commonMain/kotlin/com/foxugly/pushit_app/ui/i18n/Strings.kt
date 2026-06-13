@@ -72,11 +72,14 @@ data class Strings(
 }
 
 /**
- * Localized text for an error surfaced to the UI: transport failures
- * ([NetworkException]) become a localized message; anything else keeps its own
- * message, falling back to [fallback]. Keeps the data layer language-agnostic.
+ * Localized text for an error surfaced to the UI, or `null` when there is
+ * nothing worth showing (coroutine cancellation — e.g. a screen left the
+ * composition mid-request). Transport failures ([NetworkException]) become a
+ * localized message; anything else keeps its own message, falling back to
+ * [fallback]. Keeps the data layer language-agnostic.
  */
-fun Strings.errorText(throwable: Throwable, fallback: String): String = when {
+fun Strings.errorText(throwable: Throwable, fallback: String): String? = when {
+    throwable is kotlin.coroutines.cancellation.CancellationException -> null
     throwable is NetworkException && throwable.kind == NetworkErrorKind.TIMEOUT -> networkTimeout
     throwable is NetworkException -> networkOffline
     else -> throwable.message ?: fallback

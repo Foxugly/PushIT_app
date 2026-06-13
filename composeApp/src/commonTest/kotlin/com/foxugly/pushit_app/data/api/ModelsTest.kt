@@ -50,31 +50,25 @@ class ModelsTest {
     }
 
     @Test
-    fun notificationListResponseDeserialization() {
+    fun notificationListDeserialization() {
+        // /notifications/ returns a bare array (un-paginated).
         val raw = """
-            {
-                "count": 1,
-                "next": null,
-                "previous": null,
-                "results": [
-                    {
-                        "id": 42,
-                        "title": "Deploy complete",
-                        "message": "Version 2.1 deployed successfully",
-                        "status": "delivered",
-                        "created_at": "2026-04-14T10:00:00Z",
-                        "sent_at": "2026-04-14T10:00:01Z"
-                    }
-                ]
-            }
+            [
+                {
+                    "id": 42,
+                    "title": "Deploy complete",
+                    "message": "Version 2.1 deployed successfully",
+                    "status": "delivered",
+                    "created_at": "2026-04-14T10:00:00Z",
+                    "sent_at": "2026-04-14T10:00:01Z"
+                }
+            ]
         """.trimIndent()
-        val result = json.decodeFromString<NotificationListResponse>(raw)
-        assertEquals(1, result.count)
-        assertEquals(null, result.next)
-        assertEquals(1, result.results.size)
-        assertEquals(42, result.results[0].id)
-        assertEquals("Deploy complete", result.results[0].title)
-        assertEquals("delivered", result.results[0].status)
+        val result = json.decodeFromString<List<Notification>>(raw)
+        assertEquals(1, result.size)
+        assertEquals(42, result[0].id)
+        assertEquals("Deploy complete", result[0].title)
+        assertEquals("delivered", result[0].status)
     }
 
     @Test

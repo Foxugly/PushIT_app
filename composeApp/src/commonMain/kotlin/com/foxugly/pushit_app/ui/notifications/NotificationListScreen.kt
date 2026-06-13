@@ -32,9 +32,6 @@ fun NotificationListScreen(
 ) {
     var notifications by remember { mutableStateOf<List<Notification>>(emptyList()) }
     var isRefreshing by remember { mutableStateOf(false) }
-    var isLoadingMore by remember { mutableStateOf(false) }
-    var currentPage by remember { mutableStateOf(1) }
-    var hasNextPage by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var isInitialLoad by remember { mutableStateOf(true) }
 
@@ -43,32 +40,21 @@ fun NotificationListScreen(
     val pullToRefreshState = rememberPullToRefreshState()
     val strings = LocalStrings.current
 
-    suspend fun loadPage(page: Int, replace: Boolean) {
-        notificationRepository.getNotifications(page).fold(
-            onSuccess = { response ->
-                // distinctBy id: a notification arriving between page loads can shift
-                // the server offset and resurface an item on the next page → without
-                // dedup the LazyColumn's `key = id` would crash on duplicate keys.
-                notifications =
-                    if (replace) response.results
-                    else (notifications + response.results).distinctBy { it.id }
-                hasNextPage = response.next != null
-                currentPage = page
+    // /notifications/ returns the full (un-paginated) list, so one call replaces
+    // everything. Guarded so the refresh-trigger effect and the manual pull can't
+    // interleave two concurrent loads.
+    suspend fun refresh() {
+        if (isRefreshing) return
+        isRefreshing = true
+        notificationRepository.getNotifications().fold(
+            onSuccess = {
+                notifications = it
                 error = null
             },
             onFailure = { throwable ->
                 error = strings.errorText(throwable, strings.loadNotificationsFailed)
             },
         )
-    }
-
-    // Single guarded entry point for a full refresh — the LaunchedEffect trigger
-    // and the manual pull can both fire; without the guard two concurrent
-    // replace-loads could interleave and write `notifications` out of order.
-    suspend fun refresh() {
-        if (isRefreshing) return
-        isRefreshing = true
-        loadPage(page = 1, replace = true)
         isRefreshing = false
         isInitialLoad = false
     }
@@ -76,26 +62,6 @@ fun NotificationListScreen(
     // Initial load and refresh-trigger response
     LaunchedEffect(refreshTrigger) {
         refresh()
-    }
-
-    // Infinite scroll: detect when near bottom
-    val lastVisibleIndex by remember {
-        derivedStateOf {
-            listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-        }
-    }
-    LaunchedEffect(lastVisibleIndex) {
-        val totalItems = notifications.size
-        if (
-            hasNextPage &&
-            !isLoadingMore &&
-            totalItems > 0 &&
-            lastVisibleIndex >= totalItems - 4 // 3-item threshold
-        ) {
-            isLoadingMore = true
-            loadPage(page = currentPage + 1, replace = false)
-            isLoadingMore = false
-        }
     }
 
     Scaffold(
@@ -168,17 +134,6 @@ fun NotificationListScreen(
                                 onClick = { onNavigateToDetail(notification.id) },
                             )
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                        }
-
-                        if (isLoadingMore) {
-                            item {
-                                Box(
-                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                                }
-                            }
                         }
                     }
                 }

@@ -107,14 +107,6 @@ data class DeviceUnlinkResponse(
 // --- Notifications ---
 
 @Serializable
-data class NotificationListResponse(
-    val count: Int,
-    val next: String?,
-    val previous: String?,
-    val results: List<Notification>,
-)
-
-@Serializable
 data class Notification(
     val id: Int,
     @SerialName("application_id") val applicationId: Int? = null,

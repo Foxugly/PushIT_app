@@ -8,11 +8,11 @@ class NotificationRepository(
 ) {
     private val tag = "PushIT/NotificationRepository"
 
-    suspend fun getNotifications(page: Int = 1): Result<NotificationListResponse> {
-        AppLogger.info(tag, "Loading notifications page=$page")
-        return api.getNotifications(page)
-            .onSuccess { AppLogger.info(tag, "Loaded notifications page=$page count=${it.results.size} hasNext=${it.next != null}") }
-            .onFailure { AppLogger.error(tag, "Failed to load notifications page=$page", it) }
+    suspend fun getNotifications(): Result<List<Notification>> {
+        AppLogger.info(tag, "Loading notifications")
+        return api.getNotifications()
+            .onSuccess { AppLogger.info(tag, "Loaded notifications count=${it.size}") }
+            .onFailure { AppLogger.error(tag, "Failed to load notifications", it) }
     }
 
     suspend fun getNotification(id: Int): Result<Notification> {

@@ -124,8 +124,10 @@ class PushItApi(
     }
 
     // --- Notifications ---
-    suspend fun getNotifications(page: Int = 1): Result<NotificationListResponse> = apiCall {
-        client.get("notifications/") { parameter("page", page) }
+    // /notifications/ (JWT) returns a bare array — the web SPA and this client
+    // both consume it un-paginated (the endpoint sets pagination_class=None).
+    suspend fun getNotifications(): Result<List<Notification>> = apiCall {
+        client.get("notifications/")
     }
 
     suspend fun getNotification(id: Int): Result<Notification> = apiCall {

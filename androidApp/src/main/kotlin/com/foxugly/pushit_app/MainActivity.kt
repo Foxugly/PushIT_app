@@ -93,7 +93,7 @@ class MainActivity : ComponentActivity() {
                 tokenStorage = tokenStorage,
                 fcmTokenProvider = fcmTokenProvider,
                 externalRefreshTrigger = refreshTrigger,
-                apiBaseUrl = if (BuildConfig.DEBUG) DEV_API_BASE_URL else PROD_API_BASE_URL,
+                apiBaseUrl = if (BuildConfig.DEBUG) BuildConfig.DEV_API_BASE_URL else PROD_API_BASE_URL,
                 enableHttpLogging = BuildConfig.DEBUG,
             )
         }
@@ -110,8 +110,9 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "PushIT/MainActivity"
-        // 10.0.2.2 = host loopback from the Android emulator.
-        private const val DEV_API_BASE_URL = "http://10.0.2.2:8000/api/v1/"
+        // Debug builds use BuildConfig.DEV_API_BASE_URL (overridable via the
+        // -PpushitDevApiBaseUrl gradle property; defaults to the emulator host
+        // loopback 10.0.2.2:8000). Release builds always use prod.
         private const val PROD_API_BASE_URL = "https://pushit-api.foxugly.com/api/v1/"
     }
 }

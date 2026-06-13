@@ -17,25 +17,21 @@ private val jsonHeader = headersOf(HttpHeaders.ContentType, "application/json")
 class NotificationRepositoryTest {
 
     @Test
-    fun getNotificationsPassesPageAndParsesList() = runTest {
-        var requestedPage: String? = null
-        val engine = MockEngine { request ->
-            requestedPage = request.url.parameters["page"]
+    fun getNotificationsParsesBareArray() = runTest {
+        // /notifications/ is un-paginated: a bare JSON array.
+        val engine = MockEngine {
             respond(
-                """{"count":1,"next":"https://x/?page=3","previous":null,
-                    "results":[{"id":42,"title":"t","message":"m","status":"sent","created_at":"2026-01-01T00:00:00Z"}]}""",
+                """[{"id":42,"title":"t","message":"m","status":"sent","created_at":"2026-01-01T00:00:00Z"}]""",
                 HttpStatusCode.OK, jsonHeader,
             )
         }
         val repo = NotificationRepository(PushItApi(FakeTokenStore(access = "a"), baseUrl = "https://test/api/v1/", engine = engine))
 
-        val result = repo.getNotifications(page = 2)
+        val result = repo.getNotifications()
 
         assertTrue(result.isSuccess, "${result.exceptionOrNull()}")
-        assertEquals("2", requestedPage)
-        assertEquals(1, result.getOrNull()?.results?.size)
-        assertEquals(42, result.getOrNull()?.results?.first()?.id)
-        assertEquals("https://x/?page=3", result.getOrNull()?.next)
+        assertEquals(1, result.getOrNull()?.size)
+        assertEquals(42, result.getOrNull()?.first()?.id)
     }
 
     @Test
