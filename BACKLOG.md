@@ -102,7 +102,7 @@ plateforme Android/iOS, build/tests/hygiène). Sévérités : **P0** bloquant ·
 - [ ] Pas de cible de test iOS (`commonTest` ne tourne que sur androidHostTest).
 
 **Lourds / à valider séparément**
-- [ ] **i18n totalement absente** — chaînes EN en dur ; externaliser via `compose.resources` (chantier dédié).
+- [x] ~~**i18n totalement absente**~~ → **fait (2026-06-14)** : catalogue `Strings` FR/NL/EN (`ui/i18n/`, approche map façon web AppCopyService, pas de compose.resources) + `LocalStrings` + sélecteur FR/NL/EN dans Settings (persisté dans TokenStorage). Tous les écrans + erreurs réseau (NetworkException) localisés. Brand (PushIT/Foxugly) inchangé.
 - [ ] `material3 = 1.10.0-alpha05` → stable : *la version stable cible n'est pas évidente (les material3 JetBrains
   sont versionnés à part de Compose 1.10.3) ; bump à valider par un build complet, pas fait à l'aveugle.*
 - [ ] `Notification.status` en `enum` : *gardé en `String` volontairement — un `enum` kotlinx planterait si le
