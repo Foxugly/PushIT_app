@@ -71,6 +71,33 @@ Open `iosApp/` in Xcode and run.
 ./gradlew :composeApp:testAndroidHostTest
 ```
 
+### Release build & signing (Android)
+
+The `release` build type runs **R8** (code shrinking + obfuscation, `isMinifyEnabled = true`,
+keep-rules in `androidApp/proguard-rules.pro`). Signing is wired but the keystore is **provided
+out-of-band** — it is never committed (`*.jks` / `keystore.properties` are git-ignored).
+
+1. Create a release keystore (once):
+   ```bash
+   keytool -genkeypair -v -keystore pushit-release.jks -alias pushit \
+     -keyalg RSA -keysize 2048 -validity 10000
+   ```
+2. Add a git-ignored `keystore.properties` at the repo root (or set the same names as env vars in CI):
+   ```properties
+   RELEASE_STORE_FILE=/abs/path/to/pushit-release.jks
+   RELEASE_STORE_PASSWORD=…
+   RELEASE_KEY_ALIAS=pushit
+   RELEASE_KEY_PASSWORD=…
+   ```
+3. Build:
+   ```bash
+   ./gradlew :androidApp:assembleRelease   # signed when keystore.properties is present, else unsigned
+   ```
+4. Add the release keystore's **SHA-1** to the Firebase API key restriction (see *Securing the Firebase API key*).
+
+> Without `keystore.properties` the release build still runs R8 and produces
+> `androidApp-release-unsigned.apk` — useful for validating the minified build.
+
 ## Usage
 
 1. Register or login with your PushIT Server credentials

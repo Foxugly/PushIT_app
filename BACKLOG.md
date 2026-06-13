@@ -60,12 +60,15 @@ plateforme Android/iOS, build/tests/hygiène). Sévérités : **P0** bloquant ·
   - `iosApp/iosApp/Info.plist` : manque `GoogleService-Info.plist` (→ `FirebaseApp.configure()` **crash**
     au lancement), `UIBackgroundModes = remote-notification`, entitlement `aps-environment` (APNs),
     et `NSCameraUsageDescription` (dès l'implémentation réelle du scanner QR).
-- [ ] **Release Android non signé + non minifié** — `androidApp/build.gradle.kts:32-36` :
-  `isMinifyEnabled = false`, aucun `signingConfig`. Build release non distribuable (Play refuse), code
-  non obfusqué (JWT/endpoints lisibles après décompilation). Ajouter un `signingConfig` (keystore
-  **hors-VCS**, identifiants via `local.properties`/env) + `isMinifyEnabled = true` + `proguardFiles`
-  AVEC keep-rules kotlinx.serialization (`@Serializable`) et Firebase. *(Non bloquant tant qu'il n'y a
-  pas de release Store ; debug non impacté.)*
+- [~] **Release Android — durcissement (config faite, validée au build)** :
+  - [x] **R8 activé** (`isMinifyEnabled = true`) + `proguard-rules.pro` (keep-rules kotlinx.serialization
+    pour les DTOs `data.api.**`, Ktor, service FCM). `:androidApp:assembleRelease` **passe** (R8 OK,
+    `mapping.txt` généré, APK minifié produit).
+  - [x] **`signingConfig` release conditionnel** — lit `keystore.properties` (racine, git-ignoré) ou env ;
+    absent → release non signé mais minifié (validable). `*.jks`/`keystore.properties` git-ignorés. Doc README.
+  - [ ] **Reste (action Renaud)** : créer le keystore release + `keystore.properties` (cf. README), puis
+    ajouter son **SHA-1** à la restriction de clé Firebase. **+ smoke-test runtime de l'APK minifié sur
+    device/émulateur** (R8 validé au build, mais la (dé)sérialisation kotlinx mérite une vérif à l'exécution).
 
 ---
 

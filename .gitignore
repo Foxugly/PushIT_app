@@ -23,6 +23,11 @@ node_modules/
 **/google-services.json
 **/GoogleService-Info.plist
 
+# Release signing — keystore + its credentials are never committed.
+keystore.properties
+*.jks
+*.keystore
+
 # Stray local artifacts
 *.bak
 emulator-screen.png
