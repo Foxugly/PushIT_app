@@ -24,6 +24,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.foxugly.pushit_app.data.api.Notification
+import com.foxugly.pushit_app.platform.formatLocalShort
 import com.foxugly.pushit_app.ui.components.ErrorBanner
 import com.foxugly.pushit_app.ui.i18n.LocalStrings
 import com.foxugly.pushit_app.ui.i18n.errorText
@@ -317,6 +318,11 @@ internal fun NotificationRow(notification: Notification, read: Boolean, onClick:
                 text = LocalStrings.current.relativeTime(notification.createdAt),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = formatLocalShort(notification.createdAt),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
             )
         }
     }

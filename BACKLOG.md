@@ -65,9 +65,9 @@ plateforme Android/iOS, build/tests/hygiène). Sévérités : **P0** bloquant ·
   `isoUtcDaysAgo` est désormais commun (suppression des `actual` Android/iOS `TimeWindow.*`, tronqué à
   la seconde), et le détail rend l'heure **locale** de l'appareil (`Instant.parse(...).toLocalDateTime(
   TimeZone.currentSystemDefault())`) via `formatLocalFull` (l'ancien suffixe « UTC » disparaît).
-  **La liste affiche maintenant le temps RELATIF** (« à l'instant / il y a 5 min / il y a 3 h / hier /
-  il y a 4 j », puis date absolue au-delà d'une semaine) via `Strings.relativeTime` — i18n FR/NL/EN
-  (placeholder `{n}`) + 7 tests unitaires. ⚠️ iOS non compilable ici/CI — à valider sur Xcode (API
+  **La liste affiche les DEUX** : le temps RELATIF (« à l'instant / il y a 5 min / il y a 3 h / hier /
+  il y a 4 j ») via `Strings.relativeTime` (i18n FR/NL/EN, placeholder `{n}`, +7 tests) **et** la
+  date+heure absolue locale (`formatLocalShort`) juste en dessous, en moins appuyé. ⚠️ iOS non compilable ici/CI — à valider sur Xcode (API
   kotlinx-datetime multiplateforme, risque faible).
 - [ ] **P3 — « Charger plus ancien » progressif** : aujourd'hui un seul appui recharge tout
   l'historique ; pourrait être incrémental (par fenêtres) si le volume grossit.
