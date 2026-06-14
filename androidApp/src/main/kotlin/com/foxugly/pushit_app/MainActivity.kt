@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.foxugly.pushit_app.diagnostics.AppLogger
 import com.foxugly.pushit_app.data.storage.TokenStorage
+import com.foxugly.pushit_app.platform.AppContextHolder
 import com.foxugly.pushit_app.platform.FcmTokenProvider
 
 class MainActivity : ComponentActivity() {
@@ -49,6 +50,7 @@ class MainActivity : ComponentActivity() {
 
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        AppContextHolder.app = applicationContext
         maybeRequestNotificationPermission()
         deepLinkNotificationId.value = readDeepLinkId(intent)
 

@@ -20,6 +20,7 @@ import com.foxugly.pushit_app.navigation.Screen
 import com.foxugly.pushit_app.platform.DeviceLinkManager
 import com.foxugly.pushit_app.platform.FcmTokenProvider
 import com.foxugly.pushit_app.platform.FcmTokenProviderSource
+import com.foxugly.pushit_app.platform.updateAppBadge
 import com.foxugly.pushit_app.ui.components.ErrorBanner
 import com.foxugly.pushit_app.ui.login.LoginScreen
 import com.foxugly.pushit_app.ui.notifications.AppFolderScreen
@@ -134,6 +135,10 @@ fun App(
                 }
         }
     }
+
+    // Mirror the unread count onto the OS app-icon badge (best-effort on
+    // Android, exact on iOS). Clears to a dot/zero when everything is read.
+    LaunchedEffect(inbox.unread.size) { updateAppBadge(inbox.unread.size) }
 
     // Deep-link from a tapped push: open the message once the inbox has loaded
     // it. Waits while the inbox is still loading; gives up (consumes) if the
