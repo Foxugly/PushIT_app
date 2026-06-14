@@ -97,6 +97,12 @@ data class DeviceUnlinkRequest(
 )
 
 @Serializable
+data class DeviceUnlinkByApplicationRequest(
+    @SerialName("push_token") val pushToken: String,
+    @SerialName("application_id") val applicationId: Int,
+)
+
+@Serializable
 data class DeviceUnlinkResponse(
     val status: String,
     @SerialName("device_id") val deviceId: Int? = null,

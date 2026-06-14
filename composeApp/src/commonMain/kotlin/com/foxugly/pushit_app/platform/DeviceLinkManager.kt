@@ -3,6 +3,7 @@ package com.foxugly.pushit_app.platform
 import com.foxugly.pushit_app.data.api.DeviceIdentifyRequest
 import com.foxugly.pushit_app.data.api.DeviceIdentifyResponse
 import com.foxugly.pushit_app.data.api.DeviceLinkRequest
+import com.foxugly.pushit_app.data.api.DeviceUnlinkByApplicationRequest
 import com.foxugly.pushit_app.data.api.DeviceUnlinkRequest
 import com.foxugly.pushit_app.data.api.LinkedApplication
 import com.foxugly.pushit_app.data.api.PushItApi
@@ -152,6 +153,27 @@ class DeviceLinkManager(
             true
         }.onFailure {
             AppLogger.error(tag, "Device unlink failed: ${it.message}", it)
+        }
+    }
+
+    /** The applications this device is currently linked to (for the Settings list). */
+    suspend fun listLinkedApplications(): Result<List<LinkedApplication>> =
+        identify().map { it?.linkedApplications.orEmpty() }
+
+    /**
+     * Unlink this device from one application by id (recipient inbox per-app
+     * unlink). No app token needed — the server resolves the device by its push
+     * token. Returns success(false) when there's no FCM token or nothing linked.
+     */
+    suspend fun unlinkApplication(applicationId: Int): Result<Boolean> {
+        val fcmToken = fcmTokenProvider.getCurrentToken() ?: return Result.success(false)
+        return api.unlinkDeviceApp(
+            DeviceUnlinkByApplicationRequest(pushToken = fcmToken, applicationId = applicationId)
+        ).map {
+            AppLogger.info(tag, "App $applicationId unlinked (unlinked=${it.unlinked})")
+            it.unlinked
+        }.onFailure {
+            AppLogger.error(tag, "Unlink app $applicationId failed: ${it.message}", it)
         }
     }
 

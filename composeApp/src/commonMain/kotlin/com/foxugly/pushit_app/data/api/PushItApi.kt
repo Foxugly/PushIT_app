@@ -123,6 +123,13 @@ class PushItApi(
         }
     }
 
+    // Per-app unlink by application id (no app token needed) — for the inbox.
+    suspend fun unlinkDeviceApp(request: DeviceUnlinkByApplicationRequest): Result<DeviceUnlinkResponse> = apiCall {
+        client.post("devices/unlink-app/") {
+            setBody(request)
+        }
+    }
+
     // --- Notifications ---
     // /notifications/ (JWT) returns a bare array — the web SPA and this client
     // both consume it un-paginated (the endpoint sets pagination_class=None).

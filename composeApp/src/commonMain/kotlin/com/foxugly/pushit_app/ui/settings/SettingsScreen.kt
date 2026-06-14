@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.foxugly.pushit_app.data.api.LinkedApplication
 import com.foxugly.pushit_app.data.api.UserProfile
 import com.foxugly.pushit_app.data.repository.AuthRepository
 import com.foxugly.pushit_app.data.storage.TokenStorage
@@ -36,8 +37,8 @@ fun SettingsScreen(
     var userError by remember { mutableStateOf<String?>(null) }
     var isLoadingUser by remember { mutableStateOf(true) }
     var isLoggingOut by remember { mutableStateOf(false) }
-    var appToken by remember { mutableStateOf(tokenStorage.getAppToken()) }
-    var isUnlinking by remember { mutableStateOf(false) }
+    var linkedApps by remember { mutableStateOf<List<LinkedApplication>>(emptyList()) }
+    var unlinkingAppId by remember { mutableStateOf<Int?>(null) }
     var unlinkError by remember { mutableStateOf<String?>(null) }
 
     val scope = rememberCoroutineScope()
@@ -53,6 +54,8 @@ fun SettingsScreen(
             },
         )
         isLoadingUser = false
+        // Refreshed on every entry (e.g. after returning from the QR scanner).
+        deviceLinkManager.listLinkedApplications().onSuccess { linkedApps = it }
     }
 
     Scaffold(
@@ -139,84 +142,75 @@ fun SettingsScreen(
             HorizontalDivider()
             Spacer(Modifier.height(24.dp))
 
-            // App token section
+            // Linked applications (recipient inbox): one per app this device has
+            // scanned. Each can be unlinked individually; scanning adds another.
             Text(
-                text = strings.appTokenSection,
+                text = strings.linkedAppsSection,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
             Spacer(Modifier.height(8.dp))
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                ),
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    val tokenDisplay = appToken
-                    if (tokenDisplay != null) {
-                        val truncated = if (tokenDisplay.length > 12) {
-                            tokenDisplay.take(12) + "..."
-                        } else {
-                            tokenDisplay
+            if (linkedApps.isEmpty()) {
+                Text(
+                    text = strings.notLinked,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                linkedApps.forEach { app ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        ),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = app.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.weight(1f),
+                            )
+                            OutlinedButton(
+                                enabled = unlinkingAppId != app.id,
+                                onClick = {
+                                    scope.launch {
+                                        unlinkingAppId = app.id
+                                        unlinkError = null
+                                        deviceLinkManager.unlinkApplication(app.id).fold(
+                                            onSuccess = { linkedApps = linkedApps.filterNot { it.id == app.id } },
+                                            onFailure = { unlinkError = strings.errorText(it, strings.unlinkFailed) },
+                                        )
+                                        unlinkingAppId = null
+                                    }
+                                },
+                            ) {
+                                if (unlinkingAppId == app.id) {
+                                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                                } else {
+                                    Text(strings.unlinkApp)
+                                }
+                            }
                         }
-                        Text(
-                            text = "${strings.linkedPrefix} ($truncated)",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    } else {
-                        Text(
-                            text = strings.notLinked,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
                     }
+                    Spacer(Modifier.height(8.dp))
                 }
+            }
+
+            unlinkError?.let {
+                Spacer(Modifier.height(8.dp))
+                ErrorBanner(it)
             }
             Spacer(Modifier.height(12.dp))
 
             Button(
-                onClick = {
-                    appToken = tokenStorage.getAppToken()
-                    onNavigateToQrScanner()
-                },
+                onClick = onNavigateToQrScanner,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(if (appToken != null) strings.rescanQr else strings.scanQr)
-            }
-
-            // Unlink: forget the app token on this device (e.g. shared/returned
-            // device). The token survives a normal logout by design; this is the
-            // explicit opt-out.
-            if (appToken != null) {
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(
-                    enabled = !isUnlinking,
-                    onClick = {
-                        scope.launch {
-                            isUnlinking = true
-                            unlinkError = null
-                            deviceLinkManager.unlinkCurrentDevice().fold(
-                                onSuccess = { appToken = null },
-                                onFailure = { unlinkError = strings.errorText(it, strings.unlinkFailed) },
-                            )
-                            isUnlinking = false
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    if (isUnlinking) {
-                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                    } else {
-                        Text(strings.unlinkDevice)
-                    }
-                }
-                unlinkError?.let {
-                    Spacer(Modifier.height(8.dp))
-                    ErrorBanner(it)
-                }
+                Text(strings.scanQr)
             }
 
             Spacer(Modifier.weight(1f))
