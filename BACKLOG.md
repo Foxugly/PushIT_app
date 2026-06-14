@@ -50,6 +50,25 @@ plateforme Android/iOS, build/tests/hygiène). Sévérités : **P0** bloquant ·
 
 ---
 
+## ✅ Inbox destinataire + push (2026-06-14)
+
+- [x] **Logo par app dans les dossiers** (decode bytes → `ImageBitmap`, placeholder 1re lettre).
+- [x] **Dossiers pour apps liées sans notif** (#4) + **« tout marquer comme lu » par dossier** (#3).
+- [x] **Deep-link push → message** (#1) — `data.notification_id` → PendingIntent → MainActivity → route.
+- [x] **Badge OS du nombre de non-lues** (#2) — iOS natif ; Android best-effort (notif IMPORTANCE_MIN).
+- [x] **Fenêtre récente + « charger plus ancien »** — `sent_since` (30 j par défaut, recharge tout).
+- [x] **Login : erreur conviviale** — plus de message API brut (`ApiException` → identifiants / serveur).
+
+## À faire (revue 2026-06-14)
+
+- [ ] **P3 — Utilitaires de date** : `formatTimestamp`/`formatDetailTimestamp` font du `split("T")`
+  manuel, et `isoUtcDaysAgo` est en `SimpleDateFormat`/`NSDate`. Envisager **kotlinx-datetime**
+  pour unifier les 3 et ouvrir le « il y a 2 h » relatif.
+- [ ] **P3 — « Charger plus ancien » progressif** : aujourd'hui un seul appui recharge tout
+  l'historique ; pourrait être incrémental (par fenêtres) si le volume grossit.
+
+> Les constats de l'audit multi-agents (2026-06-14) seront ajoutés ici après vérification.
+
 ## 🔴 P0 — Bloquants restants
 
 - [ ] **iOS — push totalement cassé** *(Renaud : iOS pas encore géré)*
