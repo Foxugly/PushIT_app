@@ -83,7 +83,7 @@ fun NotificationListScreen(
                         CircularProgressIndicator()
                     }
                 }
-                inbox.notifications.isEmpty() && error != null -> {
+                inbox.notifications.isEmpty() && folders.isEmpty() && error != null -> {
                     Column(
                         modifier = Modifier.fillMaxSize().padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -94,7 +94,7 @@ fun NotificationListScreen(
                         Button(onClick = { scope.launch { refresh() } }) { Text(strings.retry) }
                     }
                 }
-                inbox.notifications.isEmpty() -> {
+                inbox.notifications.isEmpty() && folders.isEmpty() -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
                             text = strings.noNotifications,

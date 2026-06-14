@@ -123,9 +123,11 @@ fun App(
     // Identify the authenticated device and link it when an app token is available.
     LaunchedEffect(currentScreen) {
         if (currentScreen == Screen.NotificationList) {
-            deviceLinkManager.syncAuthenticatedDevice().onFailure {
-                runtimeError = strings.errorText(it, strings.deviceConnectionFailed)
-            }
+            deviceLinkManager.syncAuthenticatedDevice()
+                .onSuccess { state -> state?.let { inbox.updateLinkedApps(it.linkedApplications) } }
+                .onFailure {
+                    runtimeError = strings.errorText(it, strings.deviceConnectionFailed)
+                }
         }
     }
 
@@ -134,9 +136,11 @@ fun App(
     DisposableEffect(Unit) {
         deviceLinkManager.startObservingTokenChanges {
             scope.launch {
-                deviceLinkManager.syncAuthenticatedDevice().onFailure { throwable ->
-                    runtimeError = strings.errorText(throwable, strings.deviceConnectionFailed)
-                }
+                deviceLinkManager.syncAuthenticatedDevice()
+                    .onSuccess { state -> state?.let { inbox.updateLinkedApps(it.linkedApplications) } }
+                    .onFailure { throwable ->
+                        runtimeError = strings.errorText(throwable, strings.deviceConnectionFailed)
+                    }
             }
         }
         onDispose { deviceLinkManager.stopObservingTokenChanges() }
@@ -148,6 +152,7 @@ fun App(
                 runtimeError = strings.errorText(it, strings.deviceConnectionFailed)
                 null
             }
+            state?.let { inbox.updateLinkedApps(it.linkedApplications) }
             val hasKnownLinkedApps = state?.linkedApplications?.isNotEmpty() == true
             if (!hasKnownLinkedApps && tokenStorage.getAppToken() == null) {
                 resetTo(Screen.QrScanner)

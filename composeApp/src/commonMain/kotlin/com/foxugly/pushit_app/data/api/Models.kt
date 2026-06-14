@@ -71,6 +71,7 @@ data class LinkedApplication(
     val description: String? = null,
     @SerialName("is_active") val isActive: Boolean,
     @SerialName("linked_at") val linkedAt: String,
+    val logo: String? = null,
 )
 
 @Serializable

@@ -24,6 +24,7 @@ fun AppFolderScreen(
 ) {
     val strings = LocalStrings.current
     val notifications = inbox.notificationsForApp(applicationId)
+    val hasUnread = notifications.any { !inbox.isRead(it.id) }
 
     Scaffold(
         topBar = {
@@ -33,6 +34,13 @@ fun AppFolderScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = strings.back)
+                    }
+                },
+                actions = {
+                    if (hasUnread) {
+                        TextButton(onClick = { inbox.markAllReadForApp(applicationId) }) {
+                            Text(strings.markAllRead)
+                        }
                     }
                 },
             )

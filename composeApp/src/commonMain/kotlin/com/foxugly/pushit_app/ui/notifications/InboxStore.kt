@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.decodeToImageBitmap
+import com.foxugly.pushit_app.data.api.LinkedApplication
 import com.foxugly.pushit_app.data.api.Notification
 import com.foxugly.pushit_app.data.repository.NotificationRepository
 import com.foxugly.pushit_app.data.storage.TokenStorage
@@ -48,6 +49,14 @@ class InboxStore(
     var loading by mutableStateOf(false)
         private set
 
+    /** Apps this device is linked to (from device identify) — so a folder shows
+     * even before any notification has been delivered for that app. */
+    private var linkedApps by mutableStateOf<List<LinkedApplication>>(emptyList())
+
+    fun updateLinkedApps(apps: List<LinkedApplication>) {
+        linkedApps = apps
+    }
+
     private var readIds by mutableStateOf(emptySet<Int>())
     private var dismissedIds by mutableStateOf(emptySet<Int>())
 
@@ -70,20 +79,38 @@ class InboxStore(
     val unread: List<Notification>
         get() = visible.filter { it.id !in readIds }
 
-    /** One folder per application, ordered by name, each with its unread count. */
+    /**
+     * One folder per application, ordered by name, each with its unread count.
+     * Built from delivered notifications, then merged with the device's linked
+     * apps so a folder appears even for a linked app with no notification yet.
+     */
     val folders: List<InboxFolder>
-        get() = visible
-            .groupBy { it.applicationId }
-            .map { (appId, items) ->
-                InboxFolder(
-                    applicationId = appId,
-                    name = items.firstOrNull()?.applicationName ?: "—",
-                    logoUrl = items.firstNotNullOfOrNull { it.applicationLogo },
-                    unreadCount = items.count { it.id !in readIds },
-                    total = items.size,
-                )
-            }
-            .sortedBy { it.name.lowercase() }
+        get() {
+            val fromNotifications = visible
+                .groupBy { it.applicationId }
+                .map { (appId, items) ->
+                    InboxFolder(
+                        applicationId = appId,
+                        name = items.firstOrNull()?.applicationName ?: "—",
+                        logoUrl = items.firstNotNullOfOrNull { it.applicationLogo },
+                        unreadCount = items.count { it.id !in readIds },
+                        total = items.size,
+                    )
+                }
+            val knownAppIds = fromNotifications.mapNotNull { it.applicationId }.toSet()
+            val emptyFromLinks = linkedApps
+                .filter { it.id !in knownAppIds }
+                .map { app ->
+                    InboxFolder(
+                        applicationId = app.id,
+                        name = app.name,
+                        logoUrl = app.logo,
+                        unreadCount = 0,
+                        total = 0,
+                    )
+                }
+            return (fromNotifications + emptyFromLinks).sortedBy { it.name.lowercase() }
+        }
 
     fun notificationsForApp(applicationId: Int?): List<Notification> =
         visible.filter { it.applicationId == applicationId }
@@ -114,6 +141,14 @@ class InboxStore(
     fun markRead(id: Int) {
         if (id in readIds) return
         readIds = readIds + id
+        persist()
+    }
+
+    /** Mark every still-visible notification of one app as read. */
+    fun markAllReadForApp(applicationId: Int?) {
+        val ids = visible.filter { it.applicationId == applicationId }.map { it.id }
+        if (ids.isEmpty()) return
+        readIds = readIds + ids
         persist()
     }
 
