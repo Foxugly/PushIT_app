@@ -135,11 +135,11 @@ class InboxStore(
         // one yet (token not provisioned), there's simply nothing to show.
         val pushToken = fcmTokenSource.getCurrentToken()
         // Recent window by default; full history once the user loads older.
-        val startDatetime = if (allLoaded) null else isoUtcDaysAgo(RECENT_WINDOW_DAYS)
+        val sentSince = if (allLoaded) null else isoUtcDaysAgo(RECENT_WINDOW_DAYS)
         val result = if (pushToken == null) {
             Result.success(emptyList())
         } else {
-            repository.getDeviceNotifications(pushToken, startDatetime)
+            repository.getDeviceNotifications(pushToken, sentSince)
         }
         result.onSuccess { notifications = it }
         loading = false

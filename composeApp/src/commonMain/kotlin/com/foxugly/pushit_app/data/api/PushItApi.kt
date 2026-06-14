@@ -139,14 +139,14 @@ class PushItApi(
 
     // Recipient inbox: notifications delivered to THIS device (resolved by its
     // FCM push token), across every app it's linked to. Bare array.
-    // startDatetime (ISO 8601) bounds the result by send date; null = full history.
+    // sentSince (ISO 8601) bounds the result by send date; null = full history.
     suspend fun getDeviceNotifications(
         pushToken: String,
-        startDatetime: String? = null,
+        sentSince: String? = null,
     ): Result<List<Notification>> = apiCall {
         client.get("notifications/device/") {
             parameter("push_token", pushToken)
-            if (startDatetime != null) parameter("start_datetime", startDatetime)
+            if (sentSince != null) parameter("sent_since", sentSince)
         }
     }
 
