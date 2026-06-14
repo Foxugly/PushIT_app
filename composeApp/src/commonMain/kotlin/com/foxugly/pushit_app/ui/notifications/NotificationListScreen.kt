@@ -24,10 +24,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.foxugly.pushit_app.data.api.Notification
-import com.foxugly.pushit_app.platform.formatLocalShort
 import com.foxugly.pushit_app.ui.components.ErrorBanner
 import com.foxugly.pushit_app.ui.i18n.LocalStrings
 import com.foxugly.pushit_app.ui.i18n.errorText
+import com.foxugly.pushit_app.ui.i18n.relativeTime
 import com.foxugly.pushit_app.ui.theme.pushItTopAppBarColors
 import kotlinx.coroutines.launch
 
@@ -314,7 +314,7 @@ internal fun NotificationRow(notification: Notification, read: Boolean, onClick:
             StatusBadge(status = notification.status)
             Spacer(Modifier.height(4.dp))
             Text(
-                text = formatTimestamp(notification.createdAt),
+                text = LocalStrings.current.relativeTime(notification.createdAt),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -322,7 +322,3 @@ internal fun NotificationRow(notification: Notification, read: Boolean, onClick:
     }
 }
 
-/**
- * Formats an ISO-8601 UTC timestamp into a short, device-local "yyyy-MM-dd HH:mm".
- */
-internal fun formatTimestamp(isoTimestamp: String): String = formatLocalShort(isoTimestamp)

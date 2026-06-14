@@ -8,13 +8,15 @@ import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
 /**
- * ISO-8601 UTC timestamp for `days` ago, e.g. "2026-05-15T11:44:58Z".
- * Used as the recent-window lower bound (`start_datetime`) for the inbox.
+ * ISO-8601 UTC timestamp (whole seconds) for `days` ago, e.g. "2026-05-15T11:44:58Z".
+ * Used as the recent-window lower bound (`sent_since`) for the inbox.
  *
  * Pure-common via kotlin.time / kotlinx-datetime — no per-platform formatter.
+ * Truncated to seconds (no fractional part) to match the backend filter contract.
  */
 @OptIn(ExperimentalTime::class)
-fun isoUtcDaysAgo(days: Int): String = (Clock.System.now() - days.days).toString()
+fun isoUtcDaysAgo(days: Int): String =
+    Instant.fromEpochSeconds((Clock.System.now() - days.days).epochSeconds).toString()
 
 private fun Int.pad2(): String = toString().padStart(2, '0')
 

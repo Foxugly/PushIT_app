@@ -3,6 +3,13 @@ package com.foxugly.pushit_app.ui.i18n
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.foxugly.pushit_app.data.api.NetworkErrorKind
 import com.foxugly.pushit_app.data.api.NetworkException
+import com.foxugly.pushit_app.platform.formatLocalShort
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.daysUntil
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 /**
  * All user-facing UI strings, one immutable instance per [AppLanguage] (FR/NL/EN).
@@ -44,6 +51,12 @@ data class Strings(
     val createdLabel: String,
     val sentLabel: String,
     val timestampAt: String,
+    // Relative timestamps (notification list) — "{n}" is replaced with the count
+    val justNow: String,
+    val minutesAgo: String,
+    val hoursAgo: String,
+    val yesterday: String,
+    val daysAgo: String,
     // Settings
     val settingsTitle: String,
     val account: String,
@@ -97,6 +110,36 @@ fun Strings.errorText(throwable: Throwable, fallback: String): String? = when {
     else -> throwable.message ?: fallback
 }
 
+/**
+ * Human, device-local relative time for a list row: "just now", "5 min ago",
+ * "3 h ago", "yesterday", "4 d ago", and the absolute short date beyond a week.
+ * Minutes/hours use elapsed duration; "yesterday"/days use calendar days in the
+ * device's time zone. Unparseable input or a future timestamp (clock skew)
+ * degrade gracefully (absolute date / "just now"), never throw.
+ */
+@OptIn(ExperimentalTime::class)
+fun Strings.relativeTime(isoTimestamp: String): String {
+    val instant = runCatching { Instant.parse(isoTimestamp) }.getOrNull()
+        ?: return formatLocalShort(isoTimestamp)
+    val now = Clock.System.now()
+    val diff = now - instant
+    val minutes = diff.inWholeMinutes
+    return when {
+        minutes < 1L -> justNow
+        minutes < 60L -> minutesAgo.replace("{n}", minutes.toString())
+        diff.inWholeHours < 24L -> hoursAgo.replace("{n}", diff.inWholeHours.toString())
+        else -> {
+            val tz = TimeZone.currentSystemDefault()
+            val dayDiff = instant.toLocalDateTime(tz).date.daysUntil(now.toLocalDateTime(tz).date)
+            when {
+                dayDiff <= 1 -> yesterday
+                dayDiff < 7 -> daysAgo.replace("{n}", dayDiff.toString())
+                else -> formatLocalShort(isoTimestamp)
+            }
+        }
+    }
+}
+
 private val FR = Strings(
     retry = "Réessayer",
     back = "Retour",
@@ -124,6 +167,11 @@ private val FR = Strings(
     createdLabel = "Créée",
     sentLabel = "Envoyée",
     timestampAt = "à",
+    justNow = "à l'instant",
+    minutesAgo = "il y a {n} min",
+    hoursAgo = "il y a {n} h",
+    yesterday = "hier",
+    daysAgo = "il y a {n} j",
     settingsTitle = "Paramètres",
     account = "Compte",
     loadUserFailed = "Échec du chargement des infos utilisateur",
@@ -194,6 +242,11 @@ private val NL = Strings(
     createdLabel = "Aangemaakt",
     sentLabel = "Verzonden",
     timestampAt = "om",
+    justNow = "zojuist",
+    minutesAgo = "{n} min geleden",
+    hoursAgo = "{n} u geleden",
+    yesterday = "gisteren",
+    daysAgo = "{n} d geleden",
     settingsTitle = "Instellingen",
     account = "Account",
     loadUserFailed = "Laden van gebruikersgegevens mislukt",
@@ -264,6 +317,11 @@ private val EN = Strings(
     createdLabel = "Created",
     sentLabel = "Sent",
     timestampAt = "at",
+    justNow = "just now",
+    minutesAgo = "{n} min ago",
+    hoursAgo = "{n} h ago",
+    yesterday = "yesterday",
+    daysAgo = "{n} d ago",
     settingsTitle = "Settings",
     account = "Account",
     loadUserFailed = "Failed to load user info",
