@@ -22,6 +22,8 @@ import com.foxugly.pushit_app.platform.FcmTokenProvider
 import com.foxugly.pushit_app.platform.FcmTokenProviderSource
 import com.foxugly.pushit_app.ui.components.ErrorBanner
 import com.foxugly.pushit_app.ui.login.LoginScreen
+import com.foxugly.pushit_app.ui.notifications.AppFolderScreen
+import com.foxugly.pushit_app.ui.notifications.InboxStore
 import com.foxugly.pushit_app.ui.notifications.NotificationDetailScreen
 import com.foxugly.pushit_app.ui.notifications.NotificationListScreen
 import com.foxugly.pushit_app.ui.i18n.AppLanguage
@@ -46,6 +48,7 @@ fun App(
     val api = remember(apiBaseUrl) { PushItApi(tokenStore, apiBaseUrl, enableHttpLogging) }
     val authRepository = remember(api) { AuthRepository(api, tokenStore) }
     val notificationRepository = remember(api) { NotificationRepository(api) }
+    val inbox = remember(notificationRepository) { InboxStore(notificationRepository, tokenStorage) }
     val deviceLinkManager = remember(api) {
         DeviceLinkManager(api, tokenStore, FcmTokenProviderSource(fcmTokenProvider))
     }
@@ -197,14 +200,22 @@ fun App(
                         onBack = { navigateBack() },
                     )
                     Screen.NotificationList -> NotificationListScreen(
-                        notificationRepository = notificationRepository,
+                        inbox = inbox,
                         onNavigateToDetail = { id -> navigateTo(Screen.NotificationDetail(id)) },
+                        onNavigateToFolder = { appId, name -> navigateTo(Screen.AppFolder(appId, name)) },
                         onNavigateToSettings = { navigateTo(Screen.Settings) },
                         refreshTrigger = effectiveRefreshTrigger,
                     )
+                    is Screen.AppFolder -> AppFolderScreen(
+                        inbox = inbox,
+                        applicationId = screen.applicationId,
+                        applicationName = screen.applicationName,
+                        onNavigateToDetail = { id -> navigateTo(Screen.NotificationDetail(id)) },
+                        onNavigateBack = { navigateBack() },
+                    )
                     is Screen.NotificationDetail -> NotificationDetailScreen(
                         notificationId = screen.notificationId,
-                        notificationRepository = notificationRepository,
+                        inbox = inbox,
                         onNavigateBack = { navigateBack() },
                     )
                     Screen.Settings -> SettingsScreen(

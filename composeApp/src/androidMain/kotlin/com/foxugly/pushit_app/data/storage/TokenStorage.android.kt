@@ -36,6 +36,11 @@ actual class TokenStorage(context: Context) {
         writeToken(KEY_LANGUAGE, code)
     }
 
+    actual fun getNotificationState(): String? = readToken(KEY_NOTIF_STATE)
+    actual fun setNotificationState(json: String?) {
+        writeToken(KEY_NOTIF_STATE, json)
+    }
+
     actual fun clearAuthTokens() {
         runCatching {
             prefs.edit()
@@ -73,5 +78,6 @@ actual class TokenStorage(context: Context) {
         private const val KEY_REFRESH = "refresh_token"
         private const val KEY_APP_TOKEN = "app_token"
         private const val KEY_LANGUAGE = "ui_language"
+        private const val KEY_NOTIF_STATE = "notification_state"
     }
 }

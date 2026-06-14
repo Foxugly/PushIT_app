@@ -10,41 +10,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.foxugly.pushit_app.data.api.Notification
-import com.foxugly.pushit_app.data.repository.NotificationRepository
-import com.foxugly.pushit_app.ui.components.ErrorBanner
 import com.foxugly.pushit_app.ui.i18n.LocalStrings
-import com.foxugly.pushit_app.ui.i18n.errorText
 import com.foxugly.pushit_app.ui.theme.pushItTopAppBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationDetailScreen(
     notificationId: Int,
-    notificationRepository: NotificationRepository,
+    inbox: InboxStore,
     onNavigateBack: () -> Unit,
 ) {
-    var notification by remember { mutableStateOf<Notification?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
-    // Bump to re-run the loader (the Retry button) — the effect keys on it.
-    var reloadKey by remember { mutableStateOf(0) }
     val strings = LocalStrings.current
+    val notification = inbox.find(notificationId)
 
-    LaunchedEffect(notificationId, reloadKey) {
-        isLoading = true
-        error = null
-        notificationRepository.getNotification(notificationId).fold(
-            onSuccess = { result ->
-                notification = result
-                error = null
-            },
-            onFailure = { throwable ->
-                error = strings.errorText(throwable, strings.loadNotificationFailed)
-            },
-        )
-        isLoading = false
-    }
+    // Opening a notification marks it read (it leaves the "unread" section).
+    LaunchedEffect(notificationId) { inbox.markRead(notificationId) }
 
     Scaffold(
         topBar = {
@@ -59,86 +39,66 @@ fun NotificationDetailScreen(
             )
         },
     ) { paddingValues ->
-        Box(
+        if (notification == null) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(paddingValues),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = strings.loadNotificationFailed,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            return@Scaffold
+        }
+
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
         ) {
-            when {
-                isLoading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
-                error != null && notification == null -> {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        ErrorBanner(error!!)
-                        Spacer(Modifier.height(16.dp))
-                        Button(onClick = { reloadKey++ }) {
-                            Text(strings.retry)
-                        }
-                    }
-                }
-                notification != null -> {
-                    NotificationDetailContent(
-                        notification = notification!!,
-                        error = error,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun NotificationDetailContent(
-    notification: Notification,
-    error: String?,
-    modifier: Modifier = Modifier,
-) {
-    val strings = LocalStrings.current
-    Column(
-        modifier = modifier
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-    ) {
-        error?.let {
-            ErrorBanner(it)
-            Spacer(Modifier.height(12.dp))
-        }
-
-        // Title
-        Text(
-            text = notification.title,
-            style = MaterialTheme.typography.headlineSmall,
-        )
-        Spacer(Modifier.height(8.dp))
-
-        // Status badge
-        StatusBadge(status = notification.status)
-        Spacer(Modifier.height(16.dp))
-
-        // Message body
-        Text(
-            text = notification.message,
-            style = MaterialTheme.typography.bodyLarge,
-        )
-        Spacer(Modifier.height(24.dp))
-
-        HorizontalDivider()
-        Spacer(Modifier.height(12.dp))
-
-        // Timestamps
-        LabeledTimestamp(label = strings.createdLabel, timestamp = notification.createdAt)
-
-        notification.sentAt?.let { sentAt ->
+            Text(text = notification.title, style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(8.dp))
-            LabeledTimestamp(label = strings.sentLabel, timestamp = sentAt)
+            StatusBadge(status = notification.status)
+            Spacer(Modifier.height(16.dp))
+            Text(text = notification.message, style = MaterialTheme.typography.bodyLarge)
+            Spacer(Modifier.height(24.dp))
+
+            HorizontalDivider()
+            Spacer(Modifier.height(12.dp))
+            LabeledTimestamp(label = strings.createdLabel, timestamp = notification.createdAt)
+            notification.sentAt?.let { sentAt ->
+                Spacer(Modifier.height(8.dp))
+                LabeledTimestamp(label = strings.sentLabel, timestamp = sentAt)
+            }
+
+            Spacer(Modifier.height(24.dp))
+            // Actions: mark unread (returns to the unread section) and delete (hide).
+            OutlinedButton(
+                onClick = {
+                    inbox.markUnread(notification.id)
+                    onNavigateBack()
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(strings.markUnread)
+            }
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    inbox.dismiss(notification.id)
+                    onNavigateBack()
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(strings.deleteAction)
+            }
         }
     }
 }
@@ -160,16 +120,12 @@ private fun LabeledTimestamp(label: String, timestamp: String) {
     }
 }
 
-/**
- * Formats an ISO-8601 timestamp for display in the detail screen.
- * Input format: "2024-01-15T10:30:00Z" or "2024-01-15T10:30:00.000000Z"
- */
 private fun formatDetailTimestamp(isoTimestamp: String, at: String): String {
     return try {
         val parts = isoTimestamp.split("T")
         if (parts.size < 2) return isoTimestamp
         val date = parts[0]
-        val timePart = parts[1].substringBefore("Z").substringBefore("+").take(8) // "HH:mm:ss"
+        val timePart = parts[1].substringBefore("Z").substringBefore("+").take(8)
         "$date $at $timePart UTC"
     } catch (_: Exception) {
         isoTimestamp

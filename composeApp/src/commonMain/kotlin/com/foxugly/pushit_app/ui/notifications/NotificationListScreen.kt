@@ -1,21 +1,25 @@
 package com.foxugly.pushit_app.ui.notifications
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.foxugly.pushit_app.data.api.Notification
-import com.foxugly.pushit_app.data.repository.NotificationRepository
 import com.foxugly.pushit_app.ui.components.ErrorBanner
 import com.foxugly.pushit_app.ui.i18n.LocalStrings
 import com.foxugly.pushit_app.ui.i18n.errorText
@@ -25,13 +29,12 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationListScreen(
-    notificationRepository: NotificationRepository,
+    inbox: InboxStore,
     onNavigateToDetail: (Int) -> Unit,
+    onNavigateToFolder: (Int?, String) -> Unit,
     onNavigateToSettings: () -> Unit,
     refreshTrigger: Int = 0,
 ) {
-    var notifications by remember { mutableStateOf<List<Notification>>(emptyList()) }
-    var isRefreshing by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var isInitialLoad by remember { mutableStateOf(true) }
 
@@ -40,29 +43,16 @@ fun NotificationListScreen(
     val pullToRefreshState = rememberPullToRefreshState()
     val strings = LocalStrings.current
 
-    // /notifications/ returns the full (un-paginated) list, so one call replaces
-    // everything. Guarded so the refresh-trigger effect and the manual pull can't
-    // interleave two concurrent loads.
     suspend fun refresh() {
-        if (isRefreshing) return
-        isRefreshing = true
-        notificationRepository.getNotifications().fold(
-            onSuccess = {
-                notifications = it
-                error = null
-            },
-            onFailure = { throwable ->
-                error = strings.errorText(throwable, strings.loadNotificationsFailed)
-            },
-        )
-        isRefreshing = false
+        inbox.refresh().onFailure { error = strings.errorText(it, strings.loadNotificationsFailed) }
+        if (inbox.notifications.isNotEmpty()) error = null
         isInitialLoad = false
     }
 
-    // Initial load and refresh-trigger response
-    LaunchedEffect(refreshTrigger) {
-        refresh()
-    }
+    LaunchedEffect(refreshTrigger) { refresh() }
+
+    val unread = inbox.unread
+    val folders = inbox.folders
 
     Scaffold(
         topBar = {
@@ -78,20 +68,18 @@ fun NotificationListScreen(
         },
     ) { paddingValues ->
         PullToRefreshBox(
-            isRefreshing = isRefreshing,
+            isRefreshing = inbox.loading,
             onRefresh = { scope.launch { refresh() } },
             state = pullToRefreshState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
+            modifier = Modifier.fillMaxSize().padding(paddingValues),
         ) {
             when {
-                isInitialLoad -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                isInitialLoad && inbox.loading -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
                 }
-                notifications.isEmpty() && error != null -> {
+                inbox.notifications.isEmpty() && error != null -> {
                     Column(
                         modifier = Modifier.fillMaxSize().padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -99,13 +87,11 @@ fun NotificationListScreen(
                     ) {
                         ErrorBanner(error!!)
                         Spacer(Modifier.height(16.dp))
-                        Button(onClick = { scope.launch { refresh() } }) {
-                            Text(strings.retry)
-                        }
+                        Button(onClick = { scope.launch { refresh() } }) { Text(strings.retry) }
                     }
                 }
-                notifications.isEmpty() -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                inbox.notifications.isEmpty() -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
                             text = strings.noNotifications,
                             style = MaterialTheme.typography.bodyLarge,
@@ -125,13 +111,39 @@ fun NotificationListScreen(
                             }
                         }
 
-                        itemsIndexed(
-                            items = notifications,
-                            key = { _, notification -> notification.id },
-                        ) { _, notification ->
-                            NotificationListItem(
-                                notification = notification,
-                                onClick = { onNavigateToDetail(notification.id) },
+                        // ── Unread section ──
+                        item { SectionHeader("${strings.inboxUnread} (${unread.size})") }
+                        if (unread.isEmpty()) {
+                            item {
+                                Text(
+                                    text = strings.noUnread,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                )
+                            }
+                        } else {
+                            items(unread, key = { "u-${it.id}" }) { notification ->
+                                NotificationRow(
+                                    notification = notification,
+                                    read = false,
+                                    onClick = { onNavigateToDetail(notification.id) },
+                                )
+                                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                            }
+                        }
+
+                        // ── Folders (one per app) ──
+                        item {
+                            Spacer(Modifier.height(8.dp))
+                            SectionHeader(strings.inboxFolders)
+                        }
+                        items(folders, key = { "f-${it.applicationId}" }) { folder ->
+                            FolderRow(
+                                name = folder.name,
+                                unreadCount = folder.unreadCount,
+                                total = folder.total,
+                                onClick = { onNavigateToFolder(folder.applicationId, folder.name) },
                             )
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                         }
@@ -143,21 +155,62 @@ fun NotificationListScreen(
 }
 
 @Composable
-private fun NotificationListItem(
-    notification: Notification,
-    onClick: () -> Unit,
-) {
+private fun SectionHeader(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+    )
+}
+
+@Composable
+private fun FolderRow(name: String, unreadCount: Int, total: Int, onClick: () -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        Column(Modifier.weight(1f)) {
+            Text(name, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+            Text(
+                text = "$total",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (unreadCount > 0) {
+            Badge { Text("$unreadCount") }
+            Spacer(Modifier.width(8.dp))
+        }
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** A single notification row. Unread rows are emphasized (bold + dot). */
+@Composable
+internal fun NotificationRow(notification: Notification, read: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (!read) {
+            Box(
+                Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary),
+            )
+            Spacer(Modifier.width(10.dp))
+        }
+        Column(Modifier.weight(1f)) {
             Text(
                 text = notification.title,
                 style = MaterialTheme.typography.titleMedium,
+                fontWeight = if (read) FontWeight.Normal else FontWeight.SemiBold,
                 maxLines = 1,
             )
             Spacer(Modifier.height(4.dp))
@@ -183,17 +236,13 @@ private fun NotificationListItem(
 
 /**
  * Formats an ISO-8601 timestamp string into a short human-readable form.
- * Uses simple string slicing to stay multiplatform without requiring java.time.
- * Input format: "2024-01-15T10:30:00Z" or "2024-01-15T10:30:00.000000Z"
+ * Simple string slicing to stay multiplatform without java.time.
  */
-private fun formatTimestamp(isoTimestamp: String): String {
+internal fun formatTimestamp(isoTimestamp: String): String {
     return try {
-        // Take date and time parts: "2024-01-15T10:30"
         val parts = isoTimestamp.split("T")
         if (parts.size < 2) return isoTimestamp
-        val date = parts[0] // "2024-01-15"
-        val time = parts[1].take(5) // "10:30"
-        "$date $time"
+        "${parts[0]} ${parts[1].take(5)}"
     } catch (_: Exception) {
         isoTimestamp
     }

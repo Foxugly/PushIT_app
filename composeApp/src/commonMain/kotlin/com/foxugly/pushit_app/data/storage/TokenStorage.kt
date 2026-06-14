@@ -12,4 +12,8 @@ expect class TokenStorage {
     // mobile API has no language PATCH endpoint, so this is never sent server-side.
     fun getLanguage(): String?
     fun setLanguage(code: String?)
+    // Local inbox state (read / dismissed notification ids), persisted as a JSON
+    // blob. Local-only — the backend has no per-device read state (yet).
+    fun getNotificationState(): String?
+    fun setNotificationState(json: String?)
 }

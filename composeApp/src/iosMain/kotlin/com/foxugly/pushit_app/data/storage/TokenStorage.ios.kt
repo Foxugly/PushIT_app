@@ -42,6 +42,15 @@ actual class TokenStorage {
         }
     }
 
+    actual fun getNotificationState(): String? = defaults.stringForKey(KEY_NOTIF_STATE)
+    actual fun setNotificationState(json: String?) {
+        if (json != null) {
+            defaults.setObject(json, forKey = KEY_NOTIF_STATE)
+        } else {
+            defaults.removeObjectForKey(KEY_NOTIF_STATE)
+        }
+    }
+
     actual fun clearAuthTokens() {
         defaults.removeObjectForKey(KEY_ACCESS)
         defaults.removeObjectForKey(KEY_REFRESH)
@@ -52,5 +61,6 @@ actual class TokenStorage {
         private const val KEY_REFRESH = "pushit_refresh_token"
         private const val KEY_APP_TOKEN = "pushit_app_token"
         private const val KEY_LANGUAGE = "pushit_ui_language"
+        private const val KEY_NOTIF_STATE = "pushit_notification_state"
     }
 }
