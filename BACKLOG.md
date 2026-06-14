@@ -67,7 +67,18 @@ plateforme Android/iOS, build/tests/hygiène). Sévérités : **P0** bloquant ·
 - [ ] **P3 — « Charger plus ancien » progressif** : aujourd'hui un seul appui recharge tout
   l'historique ; pourrait être incrémental (par fenêtres) si le volume grossit.
 
-> Les constats de l'audit multi-agents (2026-06-14) seront ajoutés ici après vérification.
+## Audit multi-agents (2026-06-14) — constats confirmés
+
+- [ ] **P2 — `TokenStorage.android` masque les échecs** : `readToken`/`writeToken` en `runCatching`
+  renvoient `null` silencieusement si EncryptedSharedPreferences échoue (clé maître corrompue, mémoire) →
+  déconnexions inattendues. `apply()` async sans vérif de commit. Vérifier l'écriture / remonter l'échec.
+- [ ] **P2 — Race création de channel** (`PushItFirebaseService:42-48`) : check-then-set sur un flag
+  `@Volatile` (TOCTOU). Supprimer le flag — `createNotificationChannel()` est idempotent.
+- [ ] **P2 — `UserProfile` sans `email_confirmed`** : le backend/Angular l'exposent, le modèle Kotlin l'omet.
+  Ajouter `@SerialName("email_confirmed") val emailConfirmed: Boolean? = null`.
+- [ ] **P2 — `Notification` trop permissif** : `applicationId`/`applicationName`/`deviceIds` en `? = null`
+  alors qu'ils sont `required` au schéma. Retirer les défauts null (sécurité de type).
+- [ ] **P2 — `LinkedApplication.description` nullable** vs schéma non-null : aligner (ici ou côté serializer backend).
 
 ## 🔴 P0 — Bloquants restants
 
