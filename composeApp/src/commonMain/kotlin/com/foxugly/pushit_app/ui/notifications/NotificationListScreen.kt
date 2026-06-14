@@ -95,12 +95,30 @@ fun NotificationListScreen(
                     }
                 }
                 inbox.notifications.isEmpty() && folders.isEmpty() -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(
+                        modifier = Modifier.fillMaxSize().padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
                         Text(
                             text = strings.noNotifications,
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        // Recent window may be empty while older messages exist.
+                        if (!inbox.isAllLoaded) {
+                            Spacer(Modifier.height(12.dp))
+                            LoadOlderButton(
+                                loading = inbox.loading,
+                                onClick = {
+                                    scope.launch {
+                                        inbox.loadOlder().onFailure {
+                                            error = strings.errorText(it, strings.loadNotificationsFailed)
+                                        }
+                                    }
+                                },
+                            )
+                        }
                     }
                 }
                 else -> {
@@ -150,8 +168,41 @@ fun NotificationListScreen(
                             )
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                         }
+
+                        // ── Load older (drops the recent-window bound) ──
+                        if (!inbox.isAllLoaded) {
+                            item {
+                                LoadOlderButton(
+                                    loading = inbox.loading,
+                                    onClick = {
+                                        scope.launch {
+                                            inbox.loadOlder().onFailure {
+                                                error = strings.errorText(it, strings.loadNotificationsFailed)
+                                            }
+                                        }
+                                    },
+                                )
+                            }
+                        }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoadOlderButton(loading: Boolean, onClick: () -> Unit) {
+    val strings = LocalStrings.current
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        TextButton(onClick = onClick, enabled = !loading) {
+            if (loading) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+            } else {
+                Text(strings.loadOlder)
             }
         }
     }

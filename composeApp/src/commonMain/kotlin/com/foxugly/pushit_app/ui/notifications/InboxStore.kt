@@ -10,6 +10,7 @@ import com.foxugly.pushit_app.data.api.Notification
 import com.foxugly.pushit_app.data.repository.NotificationRepository
 import com.foxugly.pushit_app.data.storage.TokenStorage
 import com.foxugly.pushit_app.platform.FcmTokenSource
+import com.foxugly.pushit_app.platform.isoUtcDaysAgo
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -48,6 +49,11 @@ class InboxStore(
         private set
     var loading by mutableStateOf(false)
         private set
+
+    // The inbox loads a recent window by default; "load older" drops the bound
+    // to fetch the full history. Exposed so the UI can show/hide the button.
+    private var allLoaded by mutableStateOf(false)
+    val isAllLoaded: Boolean get() = allLoaded
 
     /** Apps this device is linked to (from device identify) — so a folder shows
      * even before any notification has been delivered for that app. */
@@ -128,14 +134,25 @@ class InboxStore(
         // The recipient inbox is keyed on this device's FCM push token. Without
         // one yet (token not provisioned), there's simply nothing to show.
         val pushToken = fcmTokenSource.getCurrentToken()
+        // Recent window by default; full history once the user loads older.
+        val startDatetime = if (allLoaded) null else isoUtcDaysAgo(RECENT_WINDOW_DAYS)
         val result = if (pushToken == null) {
             Result.success(emptyList())
         } else {
-            repository.getDeviceNotifications(pushToken)
+            repository.getDeviceNotifications(pushToken, startDatetime)
         }
         result.onSuccess { notifications = it }
         loading = false
         return result.map { }
+    }
+
+    /** Drop the recent-window bound and reload the full history. */
+    suspend fun loadOlder(): Result<Unit> {
+        val previous = allLoaded
+        allLoaded = true
+        val result = refresh()
+        if (result.isFailure) allLoaded = previous
+        return result
     }
 
     fun markRead(id: Int) {
@@ -165,10 +182,17 @@ class InboxStore(
     }
 
     private fun persist() {
-        // Prune to currently-known ids so the stored state can't grow unbounded.
+        // Prune to known ids so stored state can't grow unbounded — but ONLY when
+        // the full history is loaded. On the recent window, older ids are absent,
+        // so pruning would drop their read/dismissed state and resurface them.
         val known = notifications.map { it.id }.toSet()
-        val read = if (known.isEmpty()) readIds else readIds intersect known
-        val dismissed = if (known.isEmpty()) dismissedIds else dismissedIds intersect known
+        val prune = allLoaded && known.isNotEmpty()
+        val read = if (prune) readIds intersect known else readIds
+        val dismissed = if (prune) dismissedIds intersect known else dismissedIds
         storage.setNotificationState(json.encodeToString(InboxLocalState(read, dismissed)))
+    }
+
+    private companion object {
+        const val RECENT_WINDOW_DAYS = 30
     }
 }
