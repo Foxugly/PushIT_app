@@ -17,6 +17,7 @@ import com.foxugly.pushit_app.data.storage.TokenStorage
 import com.foxugly.pushit_app.data.storage.TokenStorageStore
 import com.foxugly.pushit_app.diagnostics.AppLogger
 import com.foxugly.pushit_app.navigation.Screen
+import com.foxugly.pushit_app.navigation.SessionViewModel
 import com.foxugly.pushit_app.platform.DeviceLinkManager
 import com.foxugly.pushit_app.platform.FcmTokenProvider
 import com.foxugly.pushit_app.platform.FcmTokenProviderSource
@@ -60,11 +61,8 @@ fun App(
         DeviceLinkManager(api, tokenStore, FcmTokenProviderSource(fcmTokenProvider))
     }
 
-    var currentScreen by remember { mutableStateOf<Screen?>(null) }
-    // Real back stack (the old single `previousScreen` lost history on 2-hop nav).
-    val backStack = remember { mutableStateListOf<Screen>() }
+    val session = remember(authRepository) { SessionViewModel(authRepository) }
     var refreshTrigger by remember { mutableStateOf(0) }
-    var runtimeError by remember { mutableStateOf<String?>(null) }
     // UI language: a local preference (persisted in TokenStorage), defaulting to
     // the fleet default when unset. Changed from Settings.
     var language by remember { mutableStateOf(AppLanguage.fromCode(tokenStorage.getLanguage())) }
@@ -74,64 +72,26 @@ fun App(
     // Combine internal and external refresh triggers
     val effectiveRefreshTrigger = refreshTrigger + externalRefreshTrigger
 
-    fun resetTo(screen: Screen) {
-        // Clears history — used after login/logout/auth-failure so a back press
-        // can't return to a stale (e.g. authenticated) screen.
-        backStack.clear()
-        runtimeError = null
-        currentScreen = screen
-    }
-
-    fun navigateTo(screen: Screen) {
-        AppLogger.info(TAG, "Navigate to $screen")
-        currentScreen?.let { backStack.add(it) }
-        currentScreen = screen
-    }
-
-    fun navigateBack() {
-        currentScreen = if (backStack.isNotEmpty()) backStack.removeAt(backStack.lastIndex) else Screen.Login
-    }
-
     // Auth failure callback
     LaunchedEffect(Unit) {
         api.onAuthFailure = {
             AppLogger.warn(TAG, "Authentication failure callback received")
-            resetTo(Screen.Login)
+            session.resetTo(Screen.Login)
         }
     }
 
-    // Startup flow
+    // Startup flow — the routing decision lives in SessionViewModel (testable).
     LaunchedEffect(Unit) {
-        AppLogger.info(TAG, "Startup flow started")
-        runCatching {
-            currentScreen = when {
-                authRepository.isAuthenticated() && !authRepository.accessTokenExpired() -> {
-                    AppLogger.info(TAG, "Startup route: authenticated")
-                    Screen.NotificationList
-                }
-                authRepository.hasRefreshToken() -> {
-                    AppLogger.info(TAG, "Startup route: refresh token available")
-                    if (authRepository.tryRefresh()) Screen.NotificationList else Screen.Login
-                }
-                else -> {
-                    AppLogger.info(TAG, "Startup route: login")
-                    Screen.Login
-                }
-            }
-        }.onFailure {
-            AppLogger.error(TAG, "Startup flow failed", it)
-            runtimeError = strings.errorText(it, strings.startupFailed)
-            currentScreen = Screen.Login
-        }
+        session.start { strings.errorText(it, strings.startupFailed) }
     }
 
     // Identify the authenticated device and link it when an app token is available.
-    LaunchedEffect(currentScreen) {
-        if (currentScreen == Screen.NotificationList) {
+    LaunchedEffect(session.currentScreen) {
+        if (session.currentScreen == Screen.NotificationList) {
             deviceLinkManager.syncAuthenticatedDevice()
                 .onSuccess { state -> state?.let { inbox.updateLinkedApps(it.linkedApplications) } }
                 .onFailure {
-                    runtimeError = strings.errorText(it, strings.deviceConnectionFailed)
+                    session.runtimeError = strings.errorText(it, strings.deviceConnectionFailed)
                 }
         }
     }
@@ -143,15 +103,15 @@ fun App(
     // Deep-link from a tapped push: open the message once the inbox has loaded
     // it. Waits while the inbox is still loading; gives up (consumes) if the
     // user isn't authenticated or the message simply isn't in the inbox.
-    LaunchedEffect(deepLinkNotificationId, currentScreen, inbox.notifications, inbox.loading) {
+    LaunchedEffect(deepLinkNotificationId, session.currentScreen, inbox.notifications, inbox.loading) {
         val id = deepLinkNotificationId ?: return@LaunchedEffect
-        when (val screen = currentScreen) {
+        when (val screen = session.currentScreen) {
             null -> Unit // startup still resolving — wait
             Screen.Login, Screen.QrScanner -> onDeepLinkConsumed() // not a recipient context
             Screen.NotificationDetail(id) -> onDeepLinkConsumed() // already showing it
             else -> when {
                 inbox.find(id) != null -> {
-                    navigateTo(Screen.NotificationDetail(id))
+                    session.navigateTo(Screen.NotificationDetail(id))
                     onDeepLinkConsumed()
                 }
                 // Inbox settled without this message (old / dismissed) — stop waiting.
@@ -169,7 +129,7 @@ fun App(
                 deviceLinkManager.syncAuthenticatedDevice()
                     .onSuccess { state -> state?.let { inbox.updateLinkedApps(it.linkedApplications) } }
                     .onFailure { throwable ->
-                        runtimeError = strings.errorText(throwable, strings.deviceConnectionFailed)
+                        session.runtimeError = strings.errorText(throwable, strings.deviceConnectionFailed)
                     }
             }
         }
@@ -179,22 +139,18 @@ fun App(
     fun onLoginOrRegisterSuccess() {
         scope.launch {
             val state = deviceLinkManager.syncAuthenticatedDevice().getOrElse {
-                runtimeError = strings.errorText(it, strings.deviceConnectionFailed)
+                session.runtimeError = strings.errorText(it, strings.deviceConnectionFailed)
                 null
             }
             state?.let { inbox.updateLinkedApps(it.linkedApplications) }
             val hasKnownLinkedApps = state?.linkedApplications?.isNotEmpty() == true
-            if (!hasKnownLinkedApps && tokenStorage.getAppToken() == null) {
-                resetTo(Screen.QrScanner)
-            } else {
-                resetTo(Screen.NotificationList)
-            }
+            session.resetTo(session.routeAfterLogin(hasKnownLinkedApps, tokenStorage.getAppToken() != null))
         }
     }
 
     PushItTheme {
         CompositionLocalProvider(LocalStrings provides strings) {
-        val screen = currentScreen
+        val screen = session.currentScreen
         if (screen == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
@@ -203,13 +159,13 @@ fun App(
         }
 
         Column(Modifier.fillMaxSize()) {
-            runtimeError?.let {
+            session.runtimeError?.let {
                 // Tap to dismiss — otherwise a transient sync error stuck around forever.
                 ErrorBanner(
                     it,
                     modifier = Modifier
                         .padding(top = 8.dp)
-                        .clickable { runtimeError = null },
+                        .clickable { session.runtimeError = null },
                 )
             }
             Box(Modifier.fillMaxSize()) {
@@ -226,34 +182,31 @@ fun App(
                             // link failure surfaced on an already-different screen.
                             scope.launch {
                                 deviceLinkManager.linkWithStoredAppToken().onFailure { throwable ->
-                                    runtimeError = strings.errorText(throwable, strings.deviceLinkFailed)
+                                    session.runtimeError = strings.errorText(throwable, strings.deviceLinkFailed)
                                 }
-                                resetTo(
-                                    if (authRepository.isAuthenticated()) Screen.NotificationList
-                                    else Screen.Login
-                                )
+                                session.resetTo(session.routeAfterQrLink())
                             }
                         },
-                        onBack = { navigateBack() },
+                        onBack = { session.navigateBack() },
                     )
                     Screen.NotificationList -> NotificationListScreen(
                         inbox = inbox,
-                        onNavigateToDetail = { id -> navigateTo(Screen.NotificationDetail(id)) },
-                        onNavigateToFolder = { appId, name -> navigateTo(Screen.AppFolder(appId, name)) },
-                        onNavigateToSettings = { navigateTo(Screen.Settings) },
+                        onNavigateToDetail = { id -> session.navigateTo(Screen.NotificationDetail(id)) },
+                        onNavigateToFolder = { appId, name -> session.navigateTo(Screen.AppFolder(appId, name)) },
+                        onNavigateToSettings = { session.navigateTo(Screen.Settings) },
                         refreshTrigger = effectiveRefreshTrigger,
                     )
                     is Screen.AppFolder -> AppFolderScreen(
                         inbox = inbox,
                         applicationId = screen.applicationId,
                         applicationName = screen.applicationName,
-                        onNavigateToDetail = { id -> navigateTo(Screen.NotificationDetail(id)) },
-                        onNavigateBack = { navigateBack() },
+                        onNavigateToDetail = { id -> session.navigateTo(Screen.NotificationDetail(id)) },
+                        onNavigateBack = { session.navigateBack() },
                     )
                     is Screen.NotificationDetail -> NotificationDetailScreen(
                         notificationId = screen.notificationId,
                         inbox = inbox,
-                        onNavigateBack = { navigateBack() },
+                        onNavigateBack = { session.navigateBack() },
                     )
                     Screen.Settings -> SettingsScreen(
                         authRepository = authRepository,
@@ -264,9 +217,9 @@ fun App(
                             language = selected
                             tokenStorage.setLanguage(selected.code)
                         },
-                        onNavigateToQrScanner = { navigateTo(Screen.QrScanner) },
-                        onLogout = { resetTo(Screen.Login) },
-                        onBack = { navigateBack() },
+                        onNavigateToQrScanner = { session.navigateTo(Screen.QrScanner) },
+                        onLogout = { session.resetTo(Screen.Login) },
+                        onBack = { session.navigateBack() },
                     )
                 }
             }

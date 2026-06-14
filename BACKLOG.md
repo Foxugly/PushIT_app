@@ -148,7 +148,13 @@ plateforme Android/iOS, build/tests/hygiène). Sévérités : **P0** bloquant ·
   le routage au démarrage (`App.kt`) bascule un access expiré-mais-refreshable vers la branche refresh au lieu
   d'encaisser un 401. 5 tests unitaires (passé/futur/absent/malformé/sans-token). Les 2 autres appels à
   `isAuthenticated()` (QR) restent inchangés — pas de régression.
-- [ ] Logique métier (décision QrScanner vs List) dans `App.kt` → extraire un `SessionViewModel`/use-case.
+- [x] Logique métier (décision QrScanner vs List) dans `App.kt` → **fait (2026-06-14)** : extrait dans
+  `navigation/SessionViewModel` (état nav + `runtimeError` en snapshot state ; `navigateTo`/`navigateBack`/
+  `resetTo` ; décisions de routage pures `resolveStartupRoute`/`routeAfterLogin`/`routeAfterQrLink` +
+  `start{}` avec i18n injectée en lambda). `App.kt` ne fait plus que le rendu + l'orchestration des effets.
+  **11 tests unitaires** couvrent la pile de nav et chaque décision de routage (avant : 0, enfermé dans
+  `@Composable`). Classe simple (pas androidx `ViewModel`) pour rester triviale à tester. Comportement
+  préservé à l'identique.
 
 **Sécurité / divers**
 - [x] ~~Email loggé en clair au login~~ → **fait** : email retiré des logs de `AuthRepository.login` (PII).
