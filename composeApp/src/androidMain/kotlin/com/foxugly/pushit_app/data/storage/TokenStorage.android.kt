@@ -42,15 +42,20 @@ actual class TokenStorage(context: Context) {
     }
 
     actual fun clearAuthTokens() {
-        runCatching {
+        // commit() (synchronous) so we know the removal actually persisted —
+        // a silently-dropped clear could leave stale tokens on disk.
+        val committed = runCatching {
             prefs.edit()
                 .remove(KEY_ACCESS)
                 .remove(KEY_REFRESH)
-                .apply()
-        }.onSuccess {
-            AppLogger.info(TAG, "Auth tokens cleared")
+                .commit()
         }.onFailure {
             AppLogger.error(TAG, "Failed to clear auth tokens", it)
+        }.getOrDefault(false)
+        if (committed) {
+            AppLogger.info(TAG, "Auth tokens cleared")
+        } else {
+            AppLogger.error(TAG, "Auth token clear was not committed")
         }
     }
 
@@ -63,12 +68,20 @@ actual class TokenStorage(context: Context) {
     }
 
     private fun writeToken(key: String, token: String?) {
-        runCatching {
-            prefs.edit().putString(key, token).apply()
-        }.onSuccess {
-            AppLogger.info(TAG, "$key ${if (token == null) "cleared" else "stored"}")
+        // commit() returns whether the write actually persisted. apply() was
+        // fire-and-forget: an EncryptedSharedPreferences failure was swallowed and
+        // the caller assumed success — a token that never landed then reads back as
+        // null on the next launch, surfacing as an unexpected logout. Tokens are
+        // few and infrequent, so the synchronous write is fine.
+        val committed = runCatching {
+            prefs.edit().putString(key, token).commit()
         }.onFailure {
             AppLogger.error(TAG, "Failed to write $key", it)
+        }.getOrDefault(false)
+        if (committed) {
+            AppLogger.info(TAG, "$key ${if (token == null) "cleared" else "stored"}")
+        } else {
+            AppLogger.error(TAG, "Write of $key was not committed")
         }
     }
 

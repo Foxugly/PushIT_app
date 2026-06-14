@@ -11,7 +11,6 @@ import com.foxugly.pushit_app.diagnostics.AppLogger
 import com.foxugly.pushit_app.platform.FcmTokenProvider
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
-import kotlin.concurrent.Volatile
 
 class PushItFirebaseService : FirebaseMessagingService() {
 
@@ -39,12 +38,14 @@ class PushItFirebaseService : FirebaseMessagingService() {
     private fun showNotification(title: String, body: String, notificationId: Int?) {
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !channelCreated) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // createNotificationChannel is idempotent (no-op if it already exists),
+            // so just call it every time — simpler and thread-safe, vs the previous
+            // check-then-set flag which was a TOCTOU race under concurrent messages.
             val channel = NotificationChannel(
                 CHANNEL_ID, "PushIT Notifications", NotificationManager.IMPORTANCE_DEFAULT
             )
             notificationManager.createNotificationChannel(channel)
-            channelCreated = true
         }
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
@@ -83,10 +84,5 @@ class PushItFirebaseService : FirebaseMessagingService() {
         // Intent extra carrying the tapped notification's id (string, to match
         // the FCM data key used for the system-tray launch in the background).
         const val EXTRA_NOTIFICATION_ID = "notification_id"
-
-        // The channel is process-global; create it at most once instead of on
-        // every received message.
-        @Volatile
-        private var channelCreated = false
     }
 }

@@ -21,7 +21,7 @@ class NotificationRepositoryTest {
         // /notifications/ is un-paginated: a bare JSON array.
         val engine = MockEngine {
             respond(
-                """[{"id":42,"title":"t","message":"m","status":"sent","created_at":"2026-01-01T00:00:00Z"}]""",
+                """[{"id":42,"application_id":3,"application_name":"Acme","device_ids":[1],"title":"t","message":"m","status":"sent","created_at":"2026-01-01T00:00:00Z"}]""",
                 HttpStatusCode.OK, jsonHeader,
             )
         }
@@ -38,7 +38,7 @@ class NotificationRepositoryTest {
     fun getNotificationReturnsSingleItem() = runTest {
         val engine = MockEngine {
             respond(
-                """{"id":7,"title":"Hi","message":"body","status":"sent","created_at":"2026-01-01T00:00:00Z"}""",
+                """{"id":7,"application_id":3,"application_name":"Acme","device_ids":[],"title":"Hi","message":"body","status":"sent","created_at":"2026-01-01T00:00:00Z"}""",
                 HttpStatusCode.OK, jsonHeader,
             )
         }

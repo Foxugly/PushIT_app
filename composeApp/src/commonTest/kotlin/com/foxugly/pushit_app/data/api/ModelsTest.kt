@@ -56,6 +56,9 @@ class ModelsTest {
             [
                 {
                     "id": 42,
+                    "application_id": 3,
+                    "application_name": "Acme",
+                    "device_ids": [1, 2],
                     "title": "Deploy complete",
                     "message": "Version 2.1 deployed successfully",
                     "status": "delivered",

@@ -44,6 +44,7 @@ data class UserProfile(
     val email: String,
     val userkey: String? = null,
     @SerialName("is_active") val isActive: Boolean? = null,
+    @SerialName("email_confirmed") val emailConfirmed: Boolean? = null,
     val language: String? = null,
 )
 
@@ -68,7 +69,9 @@ data class DeviceLinkRequest(
 data class LinkedApplication(
     val id: Int,
     val name: String,
-    val description: String? = null,
+    // Always sent by the backend (empty string when unset, never null) — matches
+    // the schema's required, non-null `description`.
+    val description: String,
     @SerialName("is_active") val isActive: Boolean,
     @SerialName("linked_at") val linkedAt: String,
     val logo: String? = null,
@@ -116,10 +119,12 @@ data class DeviceUnlinkResponse(
 @Serializable
 data class Notification(
     val id: Int,
-    @SerialName("application_id") val applicationId: Int? = null,
-    @SerialName("application_name") val applicationName: String? = null,
+    // Always present on every notification response (NotificationReadSerializer) —
+    // required + non-null, matching the schema. application_logo stays nullable.
+    @SerialName("application_id") val applicationId: Int,
+    @SerialName("application_name") val applicationName: String,
     @SerialName("application_logo") val applicationLogo: String? = null,
-    @SerialName("device_ids") val deviceIds: List<Int>? = null,
+    @SerialName("device_ids") val deviceIds: List<Int>,
     val title: String,
     val message: String,
     val status: String,

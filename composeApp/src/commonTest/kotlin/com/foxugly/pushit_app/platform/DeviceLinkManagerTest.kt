@@ -19,7 +19,7 @@ private val jsonHeader = headersOf(HttpHeaders.ContentType, "application/json")
 
 private const val IDENTIFY_OK =
     """{"status":"ok","device_id":1,"device_created":false,
-        "linked_applications":[{"id":2,"name":"App","is_active":true,"linked_at":"2026-01-01T00:00:00Z"}]}"""
+        "linked_applications":[{"id":2,"name":"App","description":"","is_active":true,"linked_at":"2026-01-01T00:00:00Z"}]}"""
 
 class DeviceLinkManagerTest {
 
