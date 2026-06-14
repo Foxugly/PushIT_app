@@ -15,6 +15,14 @@ class NotificationRepository(
             .onFailure { AppLogger.error(tag, "Failed to load notifications", it) }
     }
 
+    /** Recipient inbox: notifications delivered to this device (by FCM push token). */
+    suspend fun getDeviceNotifications(pushToken: String): Result<List<Notification>> {
+        AppLogger.info(tag, "Loading device inbox")
+        return api.getDeviceNotifications(pushToken)
+            .onSuccess { AppLogger.info(tag, "Loaded device inbox count=${it.size}") }
+            .onFailure { AppLogger.error(tag, "Failed to load device inbox", it) }
+    }
+
     suspend fun getNotification(id: Int): Result<Notification> {
         AppLogger.info(tag, "Loading notification id=$id")
         return api.getNotification(id)

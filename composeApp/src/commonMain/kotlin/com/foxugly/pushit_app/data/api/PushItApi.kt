@@ -130,6 +130,12 @@ class PushItApi(
         client.get("notifications/")
     }
 
+    // Recipient inbox: notifications delivered to THIS device (resolved by its
+    // FCM push token), across every app it's linked to. Bare array.
+    suspend fun getDeviceNotifications(pushToken: String): Result<List<Notification>> = apiCall {
+        client.get("notifications/device/") { parameter("push_token", pushToken) }
+    }
+
     suspend fun getNotification(id: Int): Result<Notification> = apiCall {
         client.get("notifications/$id/")
     }

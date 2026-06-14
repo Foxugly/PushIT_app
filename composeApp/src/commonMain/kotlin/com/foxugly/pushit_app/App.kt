@@ -48,7 +48,9 @@ fun App(
     val api = remember(apiBaseUrl) { PushItApi(tokenStore, apiBaseUrl, enableHttpLogging) }
     val authRepository = remember(api) { AuthRepository(api, tokenStore) }
     val notificationRepository = remember(api) { NotificationRepository(api) }
-    val inbox = remember(notificationRepository) { InboxStore(notificationRepository, tokenStorage) }
+    val inbox = remember(notificationRepository) {
+        InboxStore(notificationRepository, tokenStorage, FcmTokenProviderSource(fcmTokenProvider))
+    }
     val deviceLinkManager = remember(api) {
         DeviceLinkManager(api, tokenStore, FcmTokenProviderSource(fcmTokenProvider))
     }

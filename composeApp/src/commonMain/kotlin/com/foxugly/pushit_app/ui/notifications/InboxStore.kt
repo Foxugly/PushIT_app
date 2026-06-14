@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import com.foxugly.pushit_app.data.api.Notification
 import com.foxugly.pushit_app.data.repository.NotificationRepository
 import com.foxugly.pushit_app.data.storage.TokenStorage
+import com.foxugly.pushit_app.platform.FcmTokenSource
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -35,6 +36,7 @@ data class InboxFolder(
 class InboxStore(
     private val repository: NotificationRepository,
     private val storage: TokenStorage,
+    private val fcmTokenSource: FcmTokenSource,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -86,7 +88,14 @@ class InboxStore(
 
     suspend fun refresh(): Result<Unit> {
         loading = true
-        val result = repository.getNotifications()
+        // The recipient inbox is keyed on this device's FCM push token. Without
+        // one yet (token not provisioned), there's simply nothing to show.
+        val pushToken = fcmTokenSource.getCurrentToken()
+        val result = if (pushToken == null) {
+            Result.success(emptyList())
+        } else {
+            repository.getDeviceNotifications(pushToken)
+        }
         result.onSuccess { notifications = it }
         loading = false
         return result.map { }
