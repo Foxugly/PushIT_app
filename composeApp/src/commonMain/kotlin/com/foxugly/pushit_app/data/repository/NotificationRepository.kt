@@ -15,6 +15,9 @@ class NotificationRepository(
             .onFailure { AppLogger.error(tag, "Failed to load notifications", it) }
     }
 
+    /** Raw bytes of an image URL (app logos). */
+    suspend fun getImageBytes(url: String): Result<ByteArray> = api.getImageBytes(url)
+
     /** Recipient inbox: notifications delivered to this device (by FCM push token). */
     suspend fun getDeviceNotifications(pushToken: String): Result<List<Notification>> {
         AppLogger.info(tag, "Loading device inbox")

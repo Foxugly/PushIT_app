@@ -3,6 +3,8 @@ package com.foxugly.pushit_app.ui.notifications
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.decodeToImageBitmap
 import com.foxugly.pushit_app.data.api.Notification
 import com.foxugly.pushit_app.data.repository.NotificationRepository
 import com.foxugly.pushit_app.data.storage.TokenStorage
@@ -20,6 +22,7 @@ private data class InboxLocalState(
 data class InboxFolder(
     val applicationId: Int?,
     val name: String,
+    val logoUrl: String?,
     val unreadCount: Int,
     val total: Int,
 )
@@ -75,6 +78,7 @@ class InboxStore(
                 InboxFolder(
                     applicationId = appId,
                     name = items.firstOrNull()?.applicationName ?: "—",
+                    logoUrl = items.firstNotNullOfOrNull { it.applicationLogo },
                     unreadCount = items.count { it.id !in readIds },
                     total = items.size,
                 )
@@ -85,6 +89,12 @@ class InboxStore(
         visible.filter { it.applicationId == applicationId }
 
     fun find(id: Int): Notification? = notifications.firstOrNull { it.id == id }
+
+    /** Fetch + decode an app logo image (best-effort; null on any failure). */
+    suspend fun loadImage(url: String): ImageBitmap? =
+        repository.getImageBytes(url).getOrNull()?.let { bytes ->
+            runCatching { bytes.decodeToImageBitmap() }.getOrNull()
+        }
 
     suspend fun refresh(): Result<Unit> {
         loading = true

@@ -147,6 +147,12 @@ class PushItApi(
         client.get("notifications/$id/")
     }
 
+    // Raw bytes of an (absolute) image URL — used to load app logos. Not JSON,
+    // so it bypasses apiCall's decode path.
+    suspend fun getImageBytes(url: String): Result<ByteArray> = runCatching {
+        client.get(url).readRawBytes()
+    }
+
     // --- Helpers ---
     private suspend inline fun <reified T> apiCall(
         crossinline block: suspend () -> HttpResponse,

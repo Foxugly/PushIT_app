@@ -117,6 +117,7 @@ data class Notification(
     val id: Int,
     @SerialName("application_id") val applicationId: Int? = null,
     @SerialName("application_name") val applicationName: String? = null,
+    @SerialName("application_logo") val applicationLogo: String? = null,
     @SerialName("device_ids") val deviceIds: List<Int>? = null,
     val title: String,
     val message: String,

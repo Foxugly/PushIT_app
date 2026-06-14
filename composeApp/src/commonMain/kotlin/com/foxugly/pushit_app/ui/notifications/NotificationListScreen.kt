@@ -1,5 +1,6 @@
 package com.foxugly.pushit_app.ui.notifications
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,9 +15,12 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.foxugly.pushit_app.data.api.Notification
@@ -140,9 +144,8 @@ fun NotificationListScreen(
                         }
                         items(folders, key = { "f-${it.applicationId}" }) { folder ->
                             FolderRow(
-                                name = folder.name,
-                                unreadCount = folder.unreadCount,
-                                total = folder.total,
+                                folder = folder,
+                                inbox = inbox,
                                 onClick = { onNavigateToFolder(folder.applicationId, folder.name) },
                             )
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
@@ -165,21 +168,45 @@ private fun SectionHeader(text: String) {
 }
 
 @Composable
-private fun FolderRow(name: String, unreadCount: Int, total: Int, onClick: () -> Unit) {
+private fun FolderRow(folder: InboxFolder, inbox: InboxStore, onClick: () -> Unit) {
+    val logo = rememberLogo(folder.logoUrl, inbox)
     Row(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (logo != null) {
+                Image(
+                    bitmap = logo,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            } else {
+                Text(
+                    text = folder.name.take(1).uppercase(),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(name, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+            Text(folder.name, style = MaterialTheme.typography.titleMedium, maxLines = 1)
             Text(
-                text = "$total",
+                text = "${folder.total}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        if (unreadCount > 0) {
-            Badge { Text("$unreadCount") }
+        if (folder.unreadCount > 0) {
+            Badge { Text("${folder.unreadCount}") }
             Spacer(Modifier.width(8.dp))
         }
         Icon(
@@ -188,6 +215,15 @@ private fun FolderRow(name: String, unreadCount: Int, total: Int, onClick: () ->
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+}
+
+@Composable
+private fun rememberLogo(url: String?, inbox: InboxStore): ImageBitmap? {
+    var bitmap by remember(url) { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(url) {
+        bitmap = if (url.isNullOrBlank()) null else inbox.loadImage(url)
+    }
+    return bitmap
 }
 
 /** A single notification row. Unread rows are emphasized (bold + dot). */
