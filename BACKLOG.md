@@ -67,18 +67,18 @@ plateforme Android/iOS, build/tests/hygiène). Sévérités : **P0** bloquant ·
 - [ ] **P3 — « Charger plus ancien » progressif** : aujourd'hui un seul appui recharge tout
   l'historique ; pourrait être incrémental (par fenêtres) si le volume grossit.
 
-## Audit multi-agents (2026-06-14) — constats confirmés
+## Audit multi-agents (2026-06-14) — traités le 2026-06-14
 
-- [ ] **P2 — `TokenStorage.android` masque les échecs** : `readToken`/`writeToken` en `runCatching`
-  renvoient `null` silencieusement si EncryptedSharedPreferences échoue (clé maître corrompue, mémoire) →
-  déconnexions inattendues. `apply()` async sans vérif de commit. Vérifier l'écriture / remonter l'échec.
-- [ ] **P2 — Race création de channel** (`PushItFirebaseService:42-48`) : check-then-set sur un flag
-  `@Volatile` (TOCTOU). Supprimer le flag — `createNotificationChannel()` est idempotent.
-- [ ] **P2 — `UserProfile` sans `email_confirmed`** : le backend/Angular l'exposent, le modèle Kotlin l'omet.
-  Ajouter `@SerialName("email_confirmed") val emailConfirmed: Boolean? = null`.
-- [ ] **P2 — `Notification` trop permissif** : `applicationId`/`applicationName`/`deviceIds` en `? = null`
-  alors qu'ils sont `required` au schéma. Retirer les défauts null (sécurité de type).
-- [ ] **P2 — `LinkedApplication.description` nullable** vs schéma non-null : aligner (ici ou côté serializer backend).
+- [x] **P2 — `TokenStorage.android` masque les échecs** — `writeToken`/`clearAuthTokens` en `commit()`
+  (synchrone) + log ERROR si non persisté (vs `apply()` fire-and-forget qui avalait l'échec → token perdu
+  → déconnexion inattendue).
+- [x] **P2 — Race création de channel** — flag `@Volatile` TOCTOU supprimé ; `createNotificationChannel()`
+  (idempotent) appelé à chaque fois, thread-safe.
+- [x] **P2 — `UserProfile` sans `email_confirmed`** — champ ajouté (`@SerialName("email_confirmed")`).
+- [x] **P2 — `Notification` trop permissif** — `applicationId`/`applicationName`/`deviceIds` désormais
+  requis + non-null (le backend les envoie toujours, protégé par le garde anti-drift) ; `applicationLogo`
+  reste nullable. Tests JSON alignés sur le contrat réel.
+- [x] **P2 — `LinkedApplication.description`** — requis + non-null (toujours envoyé).
 
 ## 🔴 P0 — Bloquants restants
 
