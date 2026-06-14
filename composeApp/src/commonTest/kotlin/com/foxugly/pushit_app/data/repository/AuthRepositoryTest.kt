@@ -8,6 +8,8 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -17,6 +19,17 @@ private val jsonHeader = headersOf(HttpHeaders.ContentType, "application/json")
 
 private fun api(store: FakeTokenStore, handler: MockEngine) =
     PushItApi(store, baseUrl = "https://test/api/v1/", engine = handler)
+
+private fun repo(store: FakeTokenStore) =
+    AuthRepository(api(store, MockEngine { respond("", HttpStatusCode.OK) }), store)
+
+/** Builds a minimal unsigned JWT carrying (or omitting) an `exp` claim. */
+@OptIn(ExperimentalEncodingApi::class)
+private fun jwt(exp: Long?): String {
+    val payload = if (exp == null) """{"sub":"x"}""" else """{"exp":$exp}"""
+    val seg = Base64.UrlSafe.encode(payload.encodeToByteArray()).trimEnd('=')
+    return "header.$seg.signature"
+}
 
 class AuthRepositoryTest {
 
@@ -70,6 +83,35 @@ class AuthRepositoryTest {
     fun isAuthenticatedReflectsTokenPresence() {
         assertTrue(AuthRepository(api(FakeTokenStore(access = "x"), MockEngine { respond("", HttpStatusCode.OK) }), FakeTokenStore(access = "x")).isAuthenticated())
         assertFalse(AuthRepository(api(FakeTokenStore(), MockEngine { respond("", HttpStatusCode.OK) }), FakeTokenStore()).isAuthenticated())
+    }
+
+    @Test
+    fun accessTokenExpiredTrueForPastExp() {
+        // exp = 0 → 1970, comfortably in the past.
+        assertTrue(repo(FakeTokenStore(access = jwt(0))).accessTokenExpired())
+    }
+
+    @Test
+    fun accessTokenExpiredFalseForFutureExp() {
+        // exp far in the future (year 2286) → not expired.
+        assertFalse(repo(FakeTokenStore(access = jwt(9_999_999_999))).accessTokenExpired())
+    }
+
+    @Test
+    fun accessTokenExpiredFalseWhenNoToken() {
+        assertFalse(repo(FakeTokenStore()).accessTokenExpired())
+    }
+
+    @Test
+    fun accessTokenExpiredFalseForMalformedToken() {
+        // Garbage that isn't a JWT must be treated as not-expired (let the request
+        // path's 401→refresh handle it), never crash.
+        assertFalse(repo(FakeTokenStore(access = "not-a-jwt")).accessTokenExpired())
+    }
+
+    @Test
+    fun accessTokenExpiredFalseWhenExpClaimMissing() {
+        assertFalse(repo(FakeTokenStore(access = jwt(null))).accessTokenExpired())
     }
 
     @Test

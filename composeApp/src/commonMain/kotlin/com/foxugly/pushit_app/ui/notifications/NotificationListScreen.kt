@@ -24,6 +24,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.foxugly.pushit_app.data.api.Notification
+import com.foxugly.pushit_app.platform.formatLocalShort
 import com.foxugly.pushit_app.ui.components.ErrorBanner
 import com.foxugly.pushit_app.ui.i18n.LocalStrings
 import com.foxugly.pushit_app.ui.i18n.errorText
@@ -322,15 +323,6 @@ internal fun NotificationRow(notification: Notification, read: Boolean, onClick:
 }
 
 /**
- * Formats an ISO-8601 timestamp string into a short human-readable form.
- * Simple string slicing to stay multiplatform without java.time.
+ * Formats an ISO-8601 UTC timestamp into a short, device-local "yyyy-MM-dd HH:mm".
  */
-internal fun formatTimestamp(isoTimestamp: String): String {
-    return try {
-        val parts = isoTimestamp.split("T")
-        if (parts.size < 2) return isoTimestamp
-        "${parts[0]} ${parts[1].take(5)}"
-    } catch (_: Exception) {
-        isoTimestamp
-    }
-}
+internal fun formatTimestamp(isoTimestamp: String): String = formatLocalShort(isoTimestamp)

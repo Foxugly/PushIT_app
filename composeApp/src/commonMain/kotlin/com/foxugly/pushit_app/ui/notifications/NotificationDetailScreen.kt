@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.foxugly.pushit_app.platform.formatLocalFull
 import com.foxugly.pushit_app.ui.i18n.LocalStrings
 import com.foxugly.pushit_app.ui.theme.pushItTopAppBarColors
 
@@ -130,14 +131,5 @@ private fun LabeledTimestamp(label: String, timestamp: String) {
     }
 }
 
-private fun formatDetailTimestamp(isoTimestamp: String, at: String): String {
-    return try {
-        val parts = isoTimestamp.split("T")
-        if (parts.size < 2) return isoTimestamp
-        val date = parts[0]
-        val timePart = parts[1].substringBefore("Z").substringBefore("+").take(8)
-        "$date $at $timePart UTC"
-    } catch (_: Exception) {
-        isoTimestamp
-    }
-}
+private fun formatDetailTimestamp(isoTimestamp: String, at: String): String =
+    formatLocalFull(isoTimestamp, at)

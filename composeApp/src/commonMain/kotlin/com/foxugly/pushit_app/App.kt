@@ -105,7 +105,7 @@ fun App(
         AppLogger.info(TAG, "Startup flow started")
         runCatching {
             currentScreen = when {
-                authRepository.isAuthenticated() -> {
+                authRepository.isAuthenticated() && !authRepository.accessTokenExpired() -> {
                     AppLogger.info(TAG, "Startup route: authenticated")
                     Screen.NotificationList
                 }

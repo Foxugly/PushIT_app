@@ -61,7 +61,7 @@ class ModelsTest {
                     "device_ids": [1, 2],
                     "title": "Deploy complete",
                     "message": "Version 2.1 deployed successfully",
-                    "status": "delivered",
+                    "status": "sent",
                     "created_at": "2026-04-14T10:00:00Z",
                     "sent_at": "2026-04-14T10:00:01Z"
                 }
@@ -71,7 +71,7 @@ class ModelsTest {
         assertEquals(1, result.size)
         assertEquals(42, result[0].id)
         assertEquals("Deploy complete", result[0].title)
-        assertEquals("delivered", result[0].status)
+        assertEquals("sent", result[0].status)
     }
 
     @Test

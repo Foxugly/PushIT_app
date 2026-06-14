@@ -61,9 +61,12 @@ plateforme Android/iOS, build/tests/hygiène). Sévérités : **P0** bloquant ·
 
 ## À faire (revue 2026-06-14)
 
-- [ ] **P3 — Utilitaires de date** : `formatTimestamp`/`formatDetailTimestamp` font du `split("T")`
-  manuel, et `isoUtcDaysAgo` est en `SimpleDateFormat`/`NSDate`. Envisager **kotlinx-datetime**
-  pour unifier les 3 et ouvrir le « il y a 2 h » relatif.
+- [x] **P3 — Utilitaires de date** : migré vers **kotlinx-datetime 0.8.0** (bump Kotlin 2.3.10→2.3.21).
+  `isoUtcDaysAgo` est désormais commun (suppression des `actual` Android/iOS `TimeWindow.*`), et
+  `formatTimestamp`/`formatDetailTimestamp` rendent l'heure **locale** de l'appareil
+  (`Instant.parse(...).toLocalDateTime(TimeZone.currentSystemDefault())`) via `formatLocalShort`/
+  `formatLocalFull` dans `platform/TimeWindow.kt` (l'ancien suffixe « UTC » du détail disparaît).
+  ⚠️ iOS non compilable ici/CI — à valider sur Xcode (API kotlinx-datetime multiplateforme, risque faible).
 - [ ] **P3 — « Charger plus ancien » progressif** : aujourd'hui un seul appui recharge tout
   l'historique ; pourrait être incrémental (par fenêtres) si le volume grossit.
 
@@ -136,9 +139,13 @@ plateforme Android/iOS, build/tests/hygiène). Sévérités : **P0** bloquant ·
 - [ ] `material3 = 1.10.0-alpha05` → stable : *la version stable cible n'est pas évidente (les material3 JetBrains
   sont versionnés à part de Compose 1.10.3) ; bump à valider par un build complet, pas fait à l'aveugle.*
 - [ ] `Notification.status` en `enum` : *gardé en `String` volontairement — un `enum` kotlinx planterait si le
-  serveur ajoute une valeur (`StatusEnum`) ; nécessiterait un fallback. À faire avec soin.* (Fixture test `"delivered"` à corriger en passant.)
-- [ ] Parsing timestamp `split("T")` → `kotlinx-datetime` (fonctionne aujourd'hui ; polish).
-- [ ] `isAuthenticated()` ne vérifie pas l'`exp` du JWT (flash + 401 évitable au démarrage) — P3.
+  serveur ajoute une valeur (`StatusEnum`) ; nécessiterait un fallback. À faire avec soin.* (Fixture test `"delivered"` → `"sent"` corrigée le 2026-06-14.)
+- [x] Parsing timestamp `split("T")` → `kotlinx-datetime` **fait (2026-06-14)** (cf. section « À faire » ci-dessus).
+- [x] `isAuthenticated()` ne vérifie pas l'`exp` du JWT → **fait (2026-06-14)** : `AuthRepository.accessTokenExpired()`
+  (décode `exp` via Base64 url-safe + `kotlin.time.Clock`, décodage en échec = non-expiré pour ne pas régresser) ;
+  le routage au démarrage (`App.kt`) bascule un access expiré-mais-refreshable vers la branche refresh au lieu
+  d'encaisser un 401. 5 tests unitaires (passé/futur/absent/malformé/sans-token). Les 2 autres appels à
+  `isAuthenticated()` (QR) restent inchangés — pas de régression.
 - [ ] Logique métier (décision QrScanner vs List) dans `App.kt` → extraire un `SessionViewModel`/use-case.
 
 **Sécurité / divers**

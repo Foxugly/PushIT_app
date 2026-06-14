@@ -14,10 +14,11 @@ composeMultiplatform = "1.10.3"
 # that), so it has its own version pin — NOT composeMultiplatform.
 composeMaterialIcons = "1.7.3"
 junit = "4.13.2"
-kotlin = "2.3.10"
+kotlin = "2.3.21"
 material3 = "1.10.0-alpha05"
 ktor = "3.1.3"
 kotlinxSerialization = "1.8.1"
+kotlinxDatetime = "0.8.0"
 multiplatformSettings = "1.3.0"
 androidxCamera = "1.4.2"
 mlkitBarcode = "17.3.0"
@@ -53,6 +54,7 @@ ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx
 ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
 ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 multiplatform-settings = { module = "com.russhwolf:multiplatform-settings", version.ref = "multiplatformSettings" }
