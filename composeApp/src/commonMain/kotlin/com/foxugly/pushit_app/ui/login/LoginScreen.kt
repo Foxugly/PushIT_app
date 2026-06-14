@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.foxugly.pushit_app.data.api.ApiException
 import com.foxugly.pushit_app.data.repository.AuthRepository
 import com.foxugly.pushit_app.ui.components.ErrorBanner
 import com.foxugly.pushit_app.ui.i18n.LocalStrings
@@ -77,7 +78,17 @@ fun LoginScreen(
                     error = null
                     authRepository.login(email, password).fold(
                         onSuccess = { onLoginSuccess() },
-                        onFailure = { error = strings.errorText(it, strings.loginFailed) },
+                        // A failed login is almost always bad credentials; show a
+                        // friendly message instead of the raw API error. Keep the
+                        // server-error and transport (offline/timeout) cases distinct.
+                        onFailure = { throwable ->
+                            error = when {
+                                throwable is ApiException && throwable.statusCode in 500..599 ->
+                                    strings.serverError
+                                throwable is ApiException -> strings.invalidCredentials
+                                else -> strings.errorText(throwable, strings.loginFailed)
+                            }
+                        },
                     )
                     isLoading = false
                 }
