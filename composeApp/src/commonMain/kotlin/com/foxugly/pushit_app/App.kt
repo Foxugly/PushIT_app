@@ -43,6 +43,10 @@ fun App(
     externalRefreshTrigger: Int = 0,
     apiBaseUrl: String = "https://pushit-api.foxugly.com/api/v1/",
     enableHttpLogging: Boolean = false,
+    // Deep-link target from a tapped push (null when launched normally). App
+    // opens the message once the inbox has it, then calls onDeepLinkConsumed.
+    deepLinkNotificationId: Int? = null,
+    onDeepLinkConsumed: () -> Unit = {},
 ) {
     val tokenStore = remember(tokenStorage) { TokenStorageStore(tokenStorage) }
     val api = remember(apiBaseUrl) { PushItApi(tokenStore, apiBaseUrl, enableHttpLogging) }
@@ -128,6 +132,27 @@ fun App(
                 .onFailure {
                     runtimeError = strings.errorText(it, strings.deviceConnectionFailed)
                 }
+        }
+    }
+
+    // Deep-link from a tapped push: open the message once the inbox has loaded
+    // it. Waits while the inbox is still loading; gives up (consumes) if the
+    // user isn't authenticated or the message simply isn't in the inbox.
+    LaunchedEffect(deepLinkNotificationId, currentScreen, inbox.notifications, inbox.loading) {
+        val id = deepLinkNotificationId ?: return@LaunchedEffect
+        when (val screen = currentScreen) {
+            null -> Unit // startup still resolving — wait
+            Screen.Login, Screen.QrScanner -> onDeepLinkConsumed() // not a recipient context
+            Screen.NotificationDetail(id) -> onDeepLinkConsumed() // already showing it
+            else -> when {
+                inbox.find(id) != null -> {
+                    navigateTo(Screen.NotificationDetail(id))
+                    onDeepLinkConsumed()
+                }
+                // Inbox settled without this message (old / dismissed) — stop waiting.
+                !inbox.loading && inbox.notifications.isNotEmpty() -> onDeepLinkConsumed()
+                else -> Unit // inbox still loading — re-runs when it updates
+            }
         }
     }
 

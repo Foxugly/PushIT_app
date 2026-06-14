@@ -24,7 +24,11 @@ fun NotificationDetailScreen(
     val notification = inbox.find(notificationId)
 
     // Opening a notification marks it read (it leaves the "unread" section).
-    LaunchedEffect(notificationId) { inbox.markRead(notificationId) }
+    // Guard on presence: a deep-link can land here before the inbox has loaded
+    // the message; only mark read once it's actually known.
+    LaunchedEffect(notificationId, notification != null) {
+        if (notification != null) inbox.markRead(notificationId)
+    }
 
     Scaffold(
         topBar = {
@@ -44,10 +48,16 @@ fun NotificationDetailScreen(
                 modifier = Modifier.fillMaxSize().padding(paddingValues),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = strings.loadNotificationFailed,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                // Still loading (e.g. opened via a deep-link before the inbox
+                // refreshed) → spinner; otherwise the message is genuinely absent.
+                if (inbox.loading) {
+                    CircularProgressIndicator()
+                } else {
+                    Text(
+                        text = strings.loadNotificationFailed,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             return@Scaffold
         }

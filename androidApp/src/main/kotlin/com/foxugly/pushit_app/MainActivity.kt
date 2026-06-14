@@ -36,6 +36,11 @@ class MainActivity : ComponentActivity() {
             AppLogger.info(TAG, "POST_NOTIFICATIONS permission granted=$granted")
         }
 
+    // Notification id from a tapped push (deep-link target). Set from the launch
+    // intent and from onNewIntent when the app is already running; consumed by
+    // App() once it navigates to the message.
+    private val deepLinkNotificationId = mutableStateOf<Int?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         AppLogger.info(TAG, "MainActivity.onCreate started")
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
@@ -45,6 +50,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         maybeRequestNotificationPermission()
+        deepLinkNotificationId.value = readDeepLinkId(intent)
 
         val tokenStorage = try {
             TokenStorage(this).also {
@@ -95,9 +101,21 @@ class MainActivity : ComponentActivity() {
                 externalRefreshTrigger = refreshTrigger,
                 apiBaseUrl = if (BuildConfig.DEBUG) BuildConfig.DEV_API_BASE_URL else PROD_API_BASE_URL,
                 enableHttpLogging = BuildConfig.DEBUG,
+                deepLinkNotificationId = deepLinkNotificationId.value,
+                onDeepLinkConsumed = { deepLinkNotificationId.value = null },
             )
         }
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // Keep getIntent() current and surface the new deep-link to App().
+        setIntent(intent)
+        readDeepLinkId(intent)?.let { deepLinkNotificationId.value = it }
+    }
+
+    private fun readDeepLinkId(intent: Intent?): Int? =
+        intent?.getStringExtra(PushItFirebaseService.EXTRA_NOTIFICATION_ID)?.toIntOrNull()
 
     private fun maybeRequestNotificationPermission() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
