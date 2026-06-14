@@ -161,6 +161,17 @@ class InboxStore(
         persist()
     }
 
+    /**
+     * Best-effort recipient receipt: tell the server the user opened notification
+     * [id] on this device. Fire-and-forget — no token, no inbox state change, and
+     * failures are swallowed (logged in the repository); it must never disrupt the
+     * reading flow.
+     */
+    suspend fun confirmOpened(id: Int) {
+        val pushToken = fcmTokenSource.getCurrentToken() ?: return
+        repository.confirmOpened(id, pushToken)
+    }
+
     /** Mark every still-visible notification of one app as read. */
     fun markAllReadForApp(applicationId: Int?) {
         val ids = visible.filter { it.applicationId == applicationId }.map { it.id }

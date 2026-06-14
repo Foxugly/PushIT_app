@@ -37,4 +37,14 @@ class NotificationRepository(
             .onFailure { AppLogger.error(tag, "Failed to load notification id=$id", it) }
     }
 
+    /** Best-effort recipient receipt: tell the server the user opened notification
+     * [id] on this device ([pushToken]). Idempotent server-side; failures are
+     * non-fatal (it's a receipt, not a user action). */
+    suspend fun confirmOpened(id: Int, pushToken: String): Result<Unit> {
+        AppLogger.info(tag, "Confirming opened id=$id")
+        return api.confirmNotificationOpened(id, pushToken)
+            .map { }
+            .onFailure { AppLogger.error(tag, "Failed to confirm opened id=$id", it) }
+    }
+
 }

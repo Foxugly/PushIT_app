@@ -154,6 +154,17 @@ class PushItApi(
         client.get("notifications/$id/")
     }
 
+    // Recipient receipt: the user opened this notification in the app. Stamps
+    // opened_at (and delivered_at) server-side for this device. Idempotent.
+    suspend fun confirmNotificationOpened(
+        id: Int,
+        pushToken: String,
+    ): Result<NotificationOpenedReceiptResponse> = apiCall {
+        client.post("notifications/$id/opened/") {
+            setBody(NotificationOpenedReceiptRequest(pushToken))
+        }
+    }
+
     // Raw bytes of an (absolute) image URL — used to load app logos. Not JSON,
     // so it bypasses apiCall's decode path.
     suspend fun getImageBytes(url: String): Result<ByteArray> = runCatching {

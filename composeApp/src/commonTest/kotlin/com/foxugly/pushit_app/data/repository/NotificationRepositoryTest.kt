@@ -57,4 +57,31 @@ class NotificationRepositoryTest {
 
         assertTrue(repo.getNotifications().isFailure)
     }
+
+    @Test
+    fun confirmOpenedPostsToTheOpenedEndpoint() = runTest {
+        val methods = mutableListOf<String>()
+        val paths = mutableListOf<String>()
+        val engine = MockEngine { request ->
+            methods += request.method.value
+            paths += request.url.encodedPath
+            respond("""{"status":"ok","opened_at":"2026-06-14T20:00:00Z"}""", HttpStatusCode.OK, jsonHeader)
+        }
+        val repo = NotificationRepository(PushItApi(FakeTokenStore(access = "a"), baseUrl = "https://test/api/v1/", engine = engine))
+
+        val result = repo.confirmOpened(42, "fcm_tok")
+
+        assertTrue(result.isSuccess, "${result.exceptionOrNull()}")
+        assertEquals("POST", methods.single())
+        assertTrue(paths.single().endsWith("/notifications/42/opened/"), paths.toString())
+    }
+
+    @Test
+    fun confirmOpenedSurfacesFailureWithoutThrowing() = runTest {
+        // Best-effort: a server error comes back as a failed Result, never an exception.
+        val engine = MockEngine { respond("""{"detail":"nope"}""", HttpStatusCode.NotFound, jsonHeader) }
+        val repo = NotificationRepository(PushItApi(FakeTokenStore(access = "a"), baseUrl = "https://test/api/v1/", engine = engine))
+
+        assertTrue(repo.confirmOpened(99, "fcm_tok").isFailure)
+    }
 }

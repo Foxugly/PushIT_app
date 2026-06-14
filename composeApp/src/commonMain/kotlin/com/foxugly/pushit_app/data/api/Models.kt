@@ -135,6 +135,17 @@ data class Notification(
 )
 
 @Serializable
+data class NotificationOpenedReceiptRequest(
+    @SerialName("push_token") val pushToken: String,
+)
+
+@Serializable
+data class NotificationOpenedReceiptResponse(
+    val status: String,
+    @SerialName("opened_at") val openedAt: String? = null,
+)
+
+@Serializable
 data class NotificationStats(
     val status: String,
     val count: Int,

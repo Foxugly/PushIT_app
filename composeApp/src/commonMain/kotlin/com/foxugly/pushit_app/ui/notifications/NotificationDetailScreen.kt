@@ -24,11 +24,15 @@ fun NotificationDetailScreen(
     val strings = LocalStrings.current
     val notification = inbox.find(notificationId)
 
-    // Opening a notification marks it read (it leaves the "unread" section).
-    // Guard on presence: a deep-link can land here before the inbox has loaded
-    // the message; only mark read once it's actually known.
+    // Opening a notification marks it read (it leaves the "unread" section) and
+    // reports an "opened" receipt to the server (best-effort). Guard on presence:
+    // a deep-link can land here before the inbox has loaded the message; only act
+    // once it's actually known.
     LaunchedEffect(notificationId, notification != null) {
-        if (notification != null) inbox.markRead(notificationId)
+        if (notification != null) {
+            inbox.markRead(notificationId)
+            inbox.confirmOpened(notificationId)
+        }
     }
 
     Scaffold(
