@@ -138,8 +138,12 @@ plateforme Android/iOS, build/tests/hygiène). Sévérités : **P0** bloquant ·
 
 **Lourds / à valider séparément**
 - [x] ~~**i18n totalement absente**~~ → **fait (2026-06-14)** : catalogue `Strings` FR/NL/EN (`ui/i18n/`, approche map façon web AppCopyService, pas de compose.resources) + `LocalStrings` + sélecteur FR/NL/EN dans Settings (persisté dans TokenStorage). Tous les écrans + erreurs réseau (NetworkException) localisés. Brand (PushIT/Foxugly) inchangé.
-- [ ] `material3 = 1.10.0-alpha05` → stable : *la version stable cible n'est pas évidente (les material3 JetBrains
-  sont versionnés à part de Compose 1.10.3) ; bump à valider par un build complet, pas fait à l'aveugle.*
+- [x] `material3 = 1.10.0-alpha05` → **décidé : GARDER (won't-do, 2026-06-15)**. Vérifié : material3 a son
+  propre train de versions (suivant les générations de Compose MP) et **il n'existe pas de 1.10 stable** —
+  le 1.10 est alpha-only (dernière stable = 1.9.0). On est sur Compose MP 1.10.3, donc `1.10.0-alpha05` est
+  le **bon appariement de génération** ; « bumper vers stable » = régresser en 1.9.0 (mismatch). Les composants
+  utilisés sont tous de la surface stable. À revisiter UNIQUEMENT quand JetBrains publie un material3 1.10.x
+  stable (bump trivial alors). Cf. mémoire `pushit-material3-alpha-is-correct`.
 - [ ] `Notification.status` en `enum` : *gardé en `String` volontairement — un `enum` kotlinx planterait si le
   serveur ajoute une valeur (`StatusEnum`) ; nécessiterait un fallback. À faire avec soin.* (Fixture test `"delivered"` → `"sent"` corrigée le 2026-06-14.)
 - [x] Parsing timestamp `split("T")` → `kotlinx-datetime` **fait (2026-06-14)** (cf. section « À faire » ci-dessus).
