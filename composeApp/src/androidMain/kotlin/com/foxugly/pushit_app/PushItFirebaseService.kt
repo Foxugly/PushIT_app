@@ -75,17 +75,17 @@ class PushItFirebaseService : FirebaseMessagingService() {
             // Messenger/WhatsApp look: the app logo is the sender avatar (LEFT), with
             // the branded PushIT small icon as a corner badge. The title becomes the
             // conversation title; the body is the message from "<app>".
+            // Logo (avatar, left) only — no bold title/sender line. The sender label
+            // is a blank space (an empty name throws), and the title + body go inline
+            // in the message itself.
             val sender = Person.Builder()
-                .setName(appName)
+                .setName(" ")
                 .setIcon(IconCompat.createWithBitmap(logo))
                 .build()
-            // App name as the conversation headline (first), then the notification
-            // title + body as the message (after the app name).
             val messageText = listOf(title, body).filter { it.isNotBlank() }.joinToString(" — ")
             builder.setStyle(
                 NotificationCompat.MessagingStyle(sender)
-                    .setConversationTitle(appName)
-                    .addMessage(messageText, System.currentTimeMillis(), sender),
+                    .addMessage(messageText.ifBlank { " " }, System.currentTimeMillis(), sender),
             )
         } else {
             // Fallback (no logo): app name as subtext → header reads "PushIT • <app>".
