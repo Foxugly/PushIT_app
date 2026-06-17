@@ -7,7 +7,11 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Typeface
 import android.os.Build
+import android.text.Spannable
+import android.text.SpannableStringBuilder
+import android.text.style.StyleSpan
 import androidx.core.app.NotificationCompat
 import androidx.core.app.Person
 import androidx.core.graphics.drawable.IconCompat
@@ -82,10 +86,22 @@ class PushItFirebaseService : FirebaseMessagingService() {
                 .setName(" ")
                 .setIcon(IconCompat.createWithBitmap(logo))
                 .build()
-            val messageText = listOf(title, body).filter { it.isNotBlank() }.joinToString(" — ")
+            // Bold title, then the body on a new line.
+            val messageText = SpannableStringBuilder().apply {
+                if (title.isNotBlank()) {
+                    val start = length
+                    append(title)
+                    setSpan(StyleSpan(Typeface.BOLD), start, length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                }
+                if (body.isNotBlank()) {
+                    if (isNotEmpty()) append("\n")
+                    append(body)
+                }
+                if (isEmpty()) append(" ")
+            }
             builder.setStyle(
                 NotificationCompat.MessagingStyle(sender)
-                    .addMessage(messageText.ifBlank { " " }, System.currentTimeMillis(), sender),
+                    .addMessage(messageText, System.currentTimeMillis(), sender),
             )
         } else {
             // Fallback (no logo): app name as subtext → header reads "PushIT • <app>".
