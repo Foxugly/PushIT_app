@@ -123,6 +123,25 @@ class InboxStore(
 
     fun find(id: Int): Notification? = notifications.firstOrNull { it.id == id }
 
+    /**
+     * Ensure notification [id] is available, fetching it directly when the inbox
+     * list doesn't already hold it — e.g. opened via a deep-link after the app was
+     * killed, before (or without) a window refresh that includes it, or while the
+     * FCM push token isn't ready yet. The fetched message is merged into the
+     * in-memory list (deduped by id, newest first) so it also appears in the inbox
+     * and its app folder. Returns null only if the fetch fails.
+     */
+    suspend fun fetchById(id: Int): Notification? {
+        find(id)?.let { return it }
+        loading = true
+        val fetched = repository.getNotification(id).getOrNull()
+        if (fetched != null && notifications.none { it.id == fetched.id }) {
+            notifications = listOf(fetched) + notifications
+        }
+        loading = false
+        return fetched
+    }
+
     /** Fetch + decode an app logo image (best-effort; null on any failure). */
     suspend fun loadImage(url: String): ImageBitmap? =
         repository.getImageBytes(url).getOrNull()?.let { bytes ->

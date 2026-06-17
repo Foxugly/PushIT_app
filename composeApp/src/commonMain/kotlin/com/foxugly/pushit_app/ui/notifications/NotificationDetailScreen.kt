@@ -24,10 +24,21 @@ fun NotificationDetailScreen(
     val strings = LocalStrings.current
     val notification = inbox.find(notificationId)
 
+    // Opened via a deep-link (app was killed): the inbox may not hold this message
+    // yet (no refresh, stale window, or FCM token not ready). Fetch it directly by
+    // id — fetchById merges it into the inbox, so find() then returns it reactively.
+    var fetching by remember(notificationId) { mutableStateOf(false) }
+    LaunchedEffect(notificationId) {
+        if (inbox.find(notificationId) == null) {
+            fetching = true
+            inbox.fetchById(notificationId)
+            fetching = false
+        }
+    }
+
     // Opening a notification marks it read (it leaves the "unread" section) and
     // reports an "opened" receipt to the server (best-effort). Guard on presence:
-    // a deep-link can land here before the inbox has loaded the message; only act
-    // once it's actually known.
+    // a deep-link can land here before the message is known; only act once it is.
     LaunchedEffect(notificationId, notification != null) {
         if (notification != null) {
             inbox.markRead(notificationId)
@@ -53,9 +64,9 @@ fun NotificationDetailScreen(
                 modifier = Modifier.fillMaxSize().padding(paddingValues),
                 contentAlignment = Alignment.Center,
             ) {
-                // Still loading (e.g. opened via a deep-link before the inbox
-                // refreshed) → spinner; otherwise the message is genuinely absent.
-                if (inbox.loading) {
+                // Still loading (e.g. opened via a deep-link, fetching by id) →
+                // spinner; otherwise the message is genuinely absent.
+                if (inbox.loading || fetching) {
                     CircularProgressIndicator()
                 } else {
                     Text(

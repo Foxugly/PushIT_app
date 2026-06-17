@@ -125,23 +125,20 @@ fun App(
     // Android, exact on iOS). Clears to a dot/zero when everything is read.
     LaunchedEffect(inbox.unread.size) { updateAppBadge(inbox.unread.size) }
 
-    // Deep-link from a tapped push: open the message once the inbox has loaded
-    // it. Waits while the inbox is still loading; gives up (consumes) if the
-    // user isn't authenticated or the message simply isn't in the inbox.
-    LaunchedEffect(deepLinkNotificationId, session.currentScreen, inbox.notifications, inbox.loading) {
+    // Deep-link from a tapped push: open the message as soon as we're on an
+    // authenticated screen. Navigate straight to the detail (which fetches the
+    // message by id and merges it into the inbox) rather than waiting for it to
+    // appear in a window refresh — after the app was killed the inbox often
+    // hasn't loaded it yet, which previously made the deep-link give up silently.
+    LaunchedEffect(deepLinkNotificationId, session.currentScreen) {
         val id = deepLinkNotificationId ?: return@LaunchedEffect
-        when (val screen = session.currentScreen) {
+        when (session.currentScreen) {
             null -> Unit // startup still resolving — wait
             Screen.Login, Screen.QrScanner -> onDeepLinkConsumed() // not a recipient context
             Screen.NotificationDetail(id) -> onDeepLinkConsumed() // already showing it
-            else -> when {
-                inbox.find(id) != null -> {
-                    session.navigateTo(Screen.NotificationDetail(id))
-                    onDeepLinkConsumed()
-                }
-                // Inbox settled without this message (old / dismissed) — stop waiting.
-                !inbox.loading && inbox.notifications.isNotEmpty() -> onDeepLinkConsumed()
-                else -> Unit // inbox still loading — re-runs when it updates
+            else -> {
+                session.navigateTo(Screen.NotificationDetail(id))
+                onDeepLinkConsumed()
             }
         }
     }
