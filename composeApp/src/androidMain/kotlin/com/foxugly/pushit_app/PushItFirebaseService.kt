@@ -5,8 +5,12 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import java.net.HttpURLConnection
+import java.net.URL
 import com.foxugly.pushit_app.diagnostics.AppLogger
 import com.foxugly.pushit_app.platform.FcmTokenProvider
 import com.google.firebase.messaging.FirebaseMessagingService
@@ -29,13 +33,23 @@ class PushItFirebaseService : FirebaseMessagingService() {
         val title = message.notification?.title ?: message.data["title"] ?: "PushIT"
         val body = message.notification?.body ?: message.data["message"] ?: ""
         val notificationId = message.data[EXTRA_NOTIFICATION_ID]?.toIntOrNull()
-        showNotification(title, body, notificationId)
+        // Data-only payload carries the app's identity so the notification can show
+        // the per-app logo (large icon) and "<app>" in the header (subtext).
+        val appName = message.data["application_name"]?.takeIf { it.isNotBlank() }
+        val logoUrl = message.data["application_logo"]?.takeIf { it.isNotBlank() }
+        showNotification(title, body, notificationId, appName, logoUrl)
         // Keep the refresh broadcast inside our own package (it is only consumed
         // by MainActivity's RECEIVER_NOT_EXPORTED receiver).
         sendBroadcast(Intent(ACTION_NOTIFICATION_RECEIVED).setPackage(packageName))
     }
 
-    private fun showNotification(title: String, body: String, notificationId: Int?) {
+    private fun showNotification(
+        title: String,
+        body: String,
+        notificationId: Int?,
+        appName: String?,
+        logoUrl: String?,
+    ) {
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -54,13 +68,42 @@ class PushItFirebaseService : FirebaseMessagingService() {
             .setContentText(body)
             .setAutoCancel(true)
 
+        // App name in the header → with the app label "PushIT" this reads
+        // "PushIT • <app>" (e.g. "PushIT • app2").
+        if (!appName.isNullOrBlank()) {
+            builder.setSubText(appName)
+        }
+        // The app's own logo as the large (right-side) icon. Best-effort: a failed
+        // or missing download just leaves the branded small icon.
+        if (!logoUrl.isNullOrBlank()) {
+            downloadBitmap(logoUrl)?.let(builder::setLargeIcon)
+        }
+
         // Tapping the notification opens the app and (when known) deep-links to
         // the message. The service can't reference MainActivity directly (it
         // lives in the app module), so target the package launch intent.
         deepLinkPendingIntent(notificationId)?.let(builder::setContentIntent)
 
         notificationManager.notify(System.currentTimeMillis().toInt(), builder.build())
-        AppLogger.info(TAG, "Local notification displayed deepLinkId=${notificationId ?: "none"}")
+        AppLogger.info(TAG, "Local notification displayed deepLinkId=${notificationId ?: "none"} app=${appName ?: "-"}")
+    }
+
+    /** Download an image for the large icon (best-effort; null on any failure).
+     * Runs on the FCM background thread, so a short blocking fetch is fine. */
+    private fun downloadBitmap(url: String): Bitmap? = runCatching {
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 8000
+            readTimeout = 8000
+            doInput = true
+        }
+        try {
+            connection.inputStream.use { BitmapFactory.decodeStream(it) }
+        } finally {
+            connection.disconnect()
+        }
+    }.getOrElse {
+        AppLogger.warn(TAG, "Large-icon download failed: ${it.message}")
+        null
     }
 
     // Branded monochrome notification icon (white "P" with the fox cut out). It
