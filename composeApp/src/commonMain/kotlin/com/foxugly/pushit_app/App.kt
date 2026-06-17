@@ -1,15 +1,15 @@
 package com.foxugly.pushit_app
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.foxugly.pushit_app.data.api.PushItApi
 import com.foxugly.pushit_app.data.repository.AuthRepository
 import com.foxugly.pushit_app.data.repository.NotificationRepository
@@ -22,7 +22,6 @@ import com.foxugly.pushit_app.platform.DeviceLinkManager
 import com.foxugly.pushit_app.platform.FcmTokenProvider
 import com.foxugly.pushit_app.platform.FcmTokenProviderSource
 import com.foxugly.pushit_app.platform.updateAppBadge
-import com.foxugly.pushit_app.ui.components.ErrorBanner
 import com.foxugly.pushit_app.ui.login.LoginScreen
 import com.foxugly.pushit_app.ui.notifications.AppFolderScreen
 import com.foxugly.pushit_app.ui.notifications.InboxStore
@@ -76,6 +75,8 @@ fun App(
     LaunchedEffect(Unit) {
         api.onAuthFailure = {
             AppLogger.warn(TAG, "Authentication failure callback received")
+            // Explain the eject rather than silently bouncing to the login screen.
+            session.runtimeError = strings.sessionExpired
             session.resetTo(Screen.Login)
         }
     }
@@ -158,21 +159,26 @@ fun App(
             return@CompositionLocalProvider
         }
 
+        // Explanatory error popup — shown over whatever screen is current (e.g. the
+        // login screen after a session-expiry eject). Dismissed with OK.
+        session.runtimeError?.let { message ->
+            AlertDialog(
+                onDismissRequest = { session.runtimeError = null },
+                confirmButton = {
+                    TextButton(onClick = { session.runtimeError = null }) { Text(strings.ok) }
+                },
+                title = { Text(strings.errorTitle) },
+                text = { Text(message) },
+            )
+        }
+
         Column(Modifier.fillMaxSize()) {
-            session.runtimeError?.let {
-                // Tap to dismiss — otherwise a transient sync error stuck around forever.
-                ErrorBanner(
-                    it,
-                    modifier = Modifier
-                        .padding(top = 8.dp)
-                        .clickable { session.runtimeError = null },
-                )
-            }
             Box(Modifier.fillMaxSize()) {
                 when (screen) {
                     Screen.Login -> LoginScreen(
                         authRepository = authRepository,
                         onLoginSuccess = ::onLoginOrRegisterSuccess,
+                        apiBaseUrl = apiBaseUrl,
                     )
                     Screen.QrScanner -> QrScannerScreen(
                         tokenStorage = tokenStorage,

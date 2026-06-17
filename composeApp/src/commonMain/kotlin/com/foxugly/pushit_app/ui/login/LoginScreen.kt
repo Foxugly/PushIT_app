@@ -5,28 +5,38 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.foxugly.pushit_app.data.api.ApiException
 import com.foxugly.pushit_app.data.repository.AuthRepository
 import com.foxugly.pushit_app.ui.components.ErrorBanner
+import com.foxugly.pushit_app.ui.components.PasswordHiddenIcon
+import com.foxugly.pushit_app.ui.components.PasswordVisibleIcon
 import com.foxugly.pushit_app.ui.i18n.LocalStrings
 import com.foxugly.pushit_app.ui.i18n.errorText
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import pushit_app.composeapp.generated.resources.Res
 import pushit_app.composeapp.generated.resources.foxugly_logo
+import pushit_app.composeapp.generated.resources.pushit_logo
 
 @Composable
 fun LoginScreen(
     authRepository: AuthRepository,
     onLoginSuccess: () -> Unit,
+    apiBaseUrl: String = "",
 ) {
+    // Which backend this build talks to — handy to tell prod from a local dev server.
+    val apiHost = apiBaseUrl.substringAfter("://").substringBefore("/").ifBlank { apiBaseUrl }
+    val isProd = apiHost.contains("foxugly.com")
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -38,6 +48,12 @@ fun LoginScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
+        Image(
+            painter = painterResource(Res.drawable.pushit_logo),
+            contentDescription = null,
+            modifier = Modifier.height(96.dp),
+        )
+        Spacer(Modifier.height(12.dp))
         Text(
             text = "PushIT",
             style = MaterialTheme.typography.headlineLarge,
@@ -64,7 +80,15 @@ fun LoginScreen(
             value = password,
             onValueChange = { password = it; error = null },
             label = { Text(strings.password) },
-            visualTransformation = PasswordVisualTransformation(),
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = {
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(
+                        imageVector = if (passwordVisible) PasswordHiddenIcon else PasswordVisibleIcon,
+                        contentDescription = if (passwordVisible) strings.hidePassword else strings.showPassword,
+                    )
+                }
+            },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
@@ -115,6 +139,15 @@ fun LoginScreen(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+
+        if (apiHost.isNotBlank()) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "● " + (if (isProd) strings.backendProd else strings.backendLocal) + " · " + apiHost,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (isProd) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+            )
+        }
     }
 
         // "by [logo] Foxugly" credit pinned to the bottom.
