@@ -21,6 +21,9 @@ private const val IDENTIFY_OK =
     """{"status":"ok","device_id":1,"device_created":false,
         "linked_applications":[{"id":2,"name":"App","description":"","is_active":true,"linked_at":"2026-01-01T00:00:00Z"}]}"""
 
+private const val IDENTIFY_NO_LINKS =
+    """{"status":"ok","device_id":1,"device_created":false,"linked_applications":[]}"""
+
 class DeviceLinkManagerTest {
 
     private fun manager(store: FakeTokenStore, fcm: FakeFcmTokenSource, engine: MockEngine) =
@@ -64,6 +67,62 @@ class DeviceLinkManagerTest {
         assertEquals(1, state?.deviceId)
         assertEquals(1, state?.linkedApplications?.size)
         assertTrue(paths.all { it.endsWith("/devices/identify/") }, "no /devices/link/ without an app token")
+    }
+
+    @Test
+    fun syncSkipsRedundantRelinkWhenAlreadyLinked() = runTest {
+        val paths = mutableListOf<String>()
+        val engine = MockEngine { request ->
+            paths += request.url.encodedPath
+            respond(IDENTIFY_OK, HttpStatusCode.OK, jsonHeader)
+        }
+        // access + fcm + a stored app token, and identify shows the device is already linked.
+        val result = manager(FakeTokenStore(access = "a", app = "apt_x"), FakeFcmTokenSource("fcm"), engine)
+            .syncAuthenticatedDevice()
+
+        assertTrue(result.isSuccess, "${result.exceptionOrNull()}")
+        assertEquals(1, result.getOrNull()?.linkedApplications?.size)
+        assertTrue(
+            paths.all { it.endsWith("/devices/identify/") },
+            "an already-linked device must not re-link on every sync (no /devices/link/ call)",
+        )
+    }
+
+    @Test
+    fun syncSwallowsInvalidAppTokenWhenNotYetLinked() = runTest {
+        val engine = MockEngine { request ->
+            if (request.url.encodedPath.endsWith("/devices/link/")) {
+                respond(
+                    """{"detail":"Invalid app token","code":"app_token_invalid"}""",
+                    HttpStatusCode.Unauthorized,
+                    jsonHeader,
+                )
+            } else {
+                respond(IDENTIFY_NO_LINKS, HttpStatusCode.OK, jsonHeader)
+            }
+        }
+        // Not yet linked + a stale stored app token → automatic link gets a 401, which is non-fatal.
+        val result = manager(FakeTokenStore(access = "a", app = "apt_stale"), FakeFcmTokenSource("fcm"), engine)
+            .syncAuthenticatedDevice()
+
+        assertTrue(result.isSuccess, "a stale app token on an automatic sync must be non-fatal")
+        assertEquals(1, result.getOrNull()?.deviceId)
+        assertEquals(0, result.getOrNull()?.linkedApplications?.size)
+    }
+
+    @Test
+    fun syncPropagatesNonAuthLinkErrorsWhenNotYetLinked() = runTest {
+        val engine = MockEngine { request ->
+            if (request.url.encodedPath.endsWith("/devices/link/")) {
+                respond("""{"detail":"boom"}""", HttpStatusCode.InternalServerError, jsonHeader)
+            } else {
+                respond(IDENTIFY_NO_LINKS, HttpStatusCode.OK, jsonHeader)
+            }
+        }
+        val result = manager(FakeTokenStore(access = "a", app = "apt_x"), FakeFcmTokenSource("fcm"), engine)
+            .syncAuthenticatedDevice()
+
+        assertTrue(result.isFailure, "a 5xx during automatic link is not swallowed")
     }
 
     @Test

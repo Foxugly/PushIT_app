@@ -57,6 +57,36 @@ class PushItApiAuthTest {
     }
 
     @Test
+    fun persistsRotatedRefreshTokenAfterRefresh() = runTest {
+        // The backend rotates + blacklists refresh tokens, so a refresh returns a NEW
+        // refresh token. If we don't persist it, the next refresh fails and ejects the user.
+        val store = FakeTokenStore(access = "stale", refresh = "refresh-1")
+        val engine = MockEngine { request ->
+            when {
+                request.url.encodedPath.endsWith("/auth/refresh/") ->
+                    respond("""{"access":"fresh","refresh":"refresh-2"}""", HttpStatusCode.OK, jsonHeader)
+                request.headers[HttpHeaders.Authorization] == "Bearer stale" ->
+                    respond("", HttpStatusCode.Unauthorized)
+                else ->
+                    respond(
+                        """{"status":"ok","device_id":1,"device_created":false,"linked_applications":[]}""",
+                        HttpStatusCode.OK, jsonHeader,
+                    )
+            }
+        }
+        val api = PushItApi(store, baseUrl = "https://test/api/v1/", engine = engine)
+
+        val result = api.identifyDevice(
+            DeviceIdentifyRequest(pushToken = "p", platform = "android", deviceName = "d"),
+        )
+
+        assertTrue(result.isSuccess, "${result.exceptionOrNull()}")
+        assertEquals("fresh", store.getAccessToken())
+        assertEquals("refresh-2", store.getRefreshToken(), "rotated refresh token must be persisted")
+        api.close()
+    }
+
+    @Test
     fun signalsAuthFailureAndClearsTokensWhenRefreshFails() = runTest {
         val store = FakeTokenStore(access = "stale", refresh = "bad")
         var authFailed = false

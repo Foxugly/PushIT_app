@@ -5,6 +5,7 @@ import com.foxugly.pushit_app.data.api.DeviceIdentifyResponse
 import com.foxugly.pushit_app.data.api.DeviceLinkRequest
 import com.foxugly.pushit_app.data.api.DeviceUnlinkByApplicationRequest
 import com.foxugly.pushit_app.data.api.DeviceUnlinkRequest
+import com.foxugly.pushit_app.data.api.ApiException
 import com.foxugly.pushit_app.data.api.LinkedApplication
 import com.foxugly.pushit_app.data.api.PushItApi
 import com.foxugly.pushit_app.data.storage.TokenStore
@@ -70,7 +71,35 @@ class DeviceLinkManager(
                 )
             )
         }
-        return linkWithAppToken(appToken, identified)
+        // Already linked: identify() above already refreshed the FCM push token, and
+        // the server keeps existing app links even after an app-token rotation. Re-sending
+        // the stored (possibly stale) app token on every launch would only risk a spurious
+        // `app_token_invalid`, so skip the redundant automatic re-link. Linking an extra
+        // application is done explicitly via QR scan (linkWithStoredAppToken).
+        if (identified.linkedApplications.isNotEmpty()) {
+            AppLogger.info(tag, "Device link skipped: already linked to ${identified.linkedApplications.size} app(s)")
+            return Result.success(
+                DeviceConnectionState(
+                    deviceId = identified.deviceId,
+                    linkedApplications = identified.linkedApplications,
+                )
+            )
+        }
+        // Not yet linked: best-effort automatic link. A 401 here (a stale app token that no
+        // longer matches any app, e.g. after a rotation) is non-fatal for an automatic sync —
+        // log it and fall back to the identify state instead of surfacing a scary error.
+        // Explicit QR-scan linking (linkWithStoredAppToken) still surfaces failures.
+        return linkWithAppToken(appToken, identified).recoverCatching { error ->
+            if (error is ApiException && error.statusCode == 401) {
+                AppLogger.warn(tag, "Automatic device link got 401 (stale app token), ignoring: ${error.message}")
+                DeviceConnectionState(
+                    deviceId = identified.deviceId,
+                    linkedApplications = identified.linkedApplications,
+                )
+            } else {
+                throw error
+            }
+        }
     }
 
     suspend fun linkWithStoredAppToken(): Result<DeviceConnectionState?> {

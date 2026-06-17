@@ -64,7 +64,12 @@ class AuthInterceptor(
                     setBody(RefreshRequest(refreshToken))
                 }
                 if (refreshResponse.status == HttpStatusCode.OK) {
-                    tokenStorage.setAccessToken(refreshResponse.body<RefreshResponse>().access)
+                    val body = refreshResponse.body<RefreshResponse>()
+                    tokenStorage.setAccessToken(body.access)
+                    // The backend rotates + blacklists refresh tokens, so it returns a new
+                    // one here. Persist it, otherwise the next refresh sends the now-blacklisted
+                    // token, fails, and ejects the user right after login.
+                    body.refresh?.let { tokenStorage.setRefreshToken(it) }
                     AppLogger.info(tag, "Access token refresh succeeded")
                     true
                 } else {

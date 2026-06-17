@@ -36,6 +36,11 @@ data class RefreshRequest(
 @Serializable
 data class RefreshResponse(
     val access: String,
+    // The backend rotates refresh tokens (ROTATE_REFRESH_TOKENS + BLACKLIST_AFTER_ROTATION),
+    // so each refresh returns a NEW refresh token and blacklists the old one. We MUST
+    // persist this, or the next refresh presents a blacklisted token and the user is
+    // ejected to the login screen. Nullable so a non-rotating backend still deserializes.
+    val refresh: String? = null,
 )
 
 @Serializable
