@@ -51,6 +51,15 @@ actual class TokenStorage {
         }
     }
 
+    actual fun getApiBaseUrl(): String? = defaults.stringForKey(KEY_API_BASE_URL)
+    actual fun setApiBaseUrl(url: String?) {
+        if (url != null) {
+            defaults.setObject(url, forKey = KEY_API_BASE_URL)
+        } else {
+            defaults.removeObjectForKey(KEY_API_BASE_URL)
+        }
+    }
+
     actual fun clearAuthTokens() {
         defaults.removeObjectForKey(KEY_ACCESS)
         defaults.removeObjectForKey(KEY_REFRESH)
@@ -62,5 +71,6 @@ actual class TokenStorage {
         private const val KEY_APP_TOKEN = "pushit_app_token"
         private const val KEY_LANGUAGE = "pushit_ui_language"
         private const val KEY_NOTIF_STATE = "pushit_notification_state"
+        private const val KEY_API_BASE_URL = "pushit_api_base_url"
     }
 }

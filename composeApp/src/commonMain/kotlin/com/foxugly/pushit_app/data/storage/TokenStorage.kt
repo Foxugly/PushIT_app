@@ -16,4 +16,8 @@ expect class TokenStorage {
     // blob. Local-only — the backend has no per-device read state (yet).
     fun getNotificationState(): String?
     fun setNotificationState(json: String?)
+    // Backend API base URL override (debug builds only — set via the login
+    // toggle). Null means "use the build default". Local-only preference.
+    fun getApiBaseUrl(): String?
+    fun setApiBaseUrl(url: String?)
 }

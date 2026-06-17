@@ -43,14 +43,36 @@ fun App(
     fcmTokenProvider: FcmTokenProvider,
     externalRefreshTrigger: Int = 0,
     apiBaseUrl: String = "https://pushit-api.foxugly.com/api/v1/",
+    // Backend switcher (debug builds only): the two targets the user can flip
+    // between at runtime, and whether the toggle is shown on the login screen.
+    prodApiBaseUrl: String = "https://pushit-api.foxugly.com/api/v1/",
+    localApiBaseUrl: String = "http://10.0.2.2:8000/api/v1/",
+    allowBackendSwitch: Boolean = false,
     enableHttpLogging: Boolean = false,
     // Deep-link target from a tapped push (null when launched normally). App
     // opens the message once the inbox has it, then calls onDeepLinkConsumed.
     deepLinkNotificationId: Int? = null,
     onDeepLinkConsumed: () -> Unit = {},
 ) {
+    // Effective backend URL. In debug a persisted override (set via the login
+    // toggle) wins; release always uses the build default (prod). Changing it
+    // recreates the API client + session chain (keyed below), which re-runs the
+    // startup flow and lands on the login screen.
+    var effectiveApiBaseUrl by remember {
+        mutableStateOf(if (allowBackendSwitch) (tokenStorage.getApiBaseUrl() ?: apiBaseUrl) else apiBaseUrl)
+    }
+    fun switchBackend(url: String) {
+        if (url == effectiveApiBaseUrl) return
+        // Tokens are per-backend (a prod JWT is meaningless on local), so drop the
+        // auth + app tokens, persist the choice, then switch.
+        tokenStorage.setApiBaseUrl(url)
+        tokenStorage.clearAuthTokens()
+        tokenStorage.setAppToken(null)
+        effectiveApiBaseUrl = url
+    }
+
     val tokenStore = remember(tokenStorage) { TokenStorageStore(tokenStorage) }
-    val api = remember(apiBaseUrl) { PushItApi(tokenStore, apiBaseUrl, enableHttpLogging) }
+    val api = remember(effectiveApiBaseUrl) { PushItApi(tokenStore, effectiveApiBaseUrl, enableHttpLogging) }
     val authRepository = remember(api) { AuthRepository(api, tokenStore) }
     val notificationRepository = remember(api) { NotificationRepository(api) }
     val inbox = remember(notificationRepository) {
@@ -71,8 +93,9 @@ fun App(
     // Combine internal and external refresh triggers
     val effectiveRefreshTrigger = refreshTrigger + externalRefreshTrigger
 
-    // Auth failure callback
-    LaunchedEffect(Unit) {
+    // Auth failure callback — re-bind whenever the API client is recreated
+    // (e.g. after a backend switch).
+    LaunchedEffect(api) {
         api.onAuthFailure = {
             AppLogger.warn(TAG, "Authentication failure callback received")
             // Explain the eject rather than silently bouncing to the login screen.
@@ -82,7 +105,8 @@ fun App(
     }
 
     // Startup flow — the routing decision lives in SessionViewModel (testable).
-    LaunchedEffect(Unit) {
+    // Keyed on session so a backend switch (which recreates it) re-runs startup.
+    LaunchedEffect(session) {
         session.start { strings.errorText(it, strings.startupFailed) }
     }
 
@@ -124,7 +148,7 @@ fun App(
 
     // Observe FCM token changes — DisposableEffect so the singleton provider's
     // callback (and its captured scope) is detached when App leaves composition.
-    DisposableEffect(Unit) {
+    DisposableEffect(deviceLinkManager) {
         deviceLinkManager.startObservingTokenChanges {
             scope.launch {
                 deviceLinkManager.syncAuthenticatedDevice()
@@ -178,7 +202,11 @@ fun App(
                     Screen.Login -> LoginScreen(
                         authRepository = authRepository,
                         onLoginSuccess = ::onLoginOrRegisterSuccess,
-                        apiBaseUrl = apiBaseUrl,
+                        apiBaseUrl = effectiveApiBaseUrl,
+                        allowBackendSwitch = allowBackendSwitch,
+                        prodApiBaseUrl = prodApiBaseUrl,
+                        localApiBaseUrl = localApiBaseUrl,
+                        onSwitchBackend = ::switchBackend,
                     )
                     Screen.QrScanner -> QrScannerScreen(
                         tokenStorage = tokenStorage,
