@@ -130,11 +130,19 @@ fun App(
     // message by id and merges it into the inbox) rather than waiting for it to
     // appear in a window refresh — after the app was killed the inbox often
     // hasn't loaded it yet, which previously made the deep-link give up silently.
+    //
+    // Login / QrScanner are NOT recipient contexts, but we must KEEP the id
+    // pending (don't consume it) on those branches: a tapped push that launches
+    // into a re-auth flow would otherwise lose its target the moment we hit the
+    // login screen, dropping the user on the inbox after they sign in. The effect
+    // is keyed on currentScreen, so it re-fires once the user authenticates and
+    // reaches an inbox/list screen, where the `else` branch navigates + consumes
+    // exactly once.
     LaunchedEffect(deepLinkNotificationId, session.currentScreen) {
         val id = deepLinkNotificationId ?: return@LaunchedEffect
         when (session.currentScreen) {
             null -> Unit // startup still resolving — wait
-            Screen.Login, Screen.QrScanner -> onDeepLinkConsumed() // not a recipient context
+            Screen.Login, Screen.QrScanner -> Unit // re-auth in progress — keep id pending
             Screen.NotificationDetail(id) -> onDeepLinkConsumed() // already showing it
             else -> {
                 session.navigateTo(Screen.NotificationDetail(id))

@@ -125,6 +125,35 @@ class AuthRepositoryTest {
     }
 
     @Test
+    fun tryRefreshPersistsRotatedRefreshToken() = runTest {
+        // The backend rotates + blacklists refresh tokens, so a successful startup
+        // refresh returns a NEW refresh token. tryRefresh() must persist it, else the
+        // next refresh presents the now-blacklisted token and the user is ejected.
+        val store = FakeTokenStore(refresh = "old-ref")
+        val engine = MockEngine {
+            respond("""{"access":"fresh","refresh":"rotated-ref"}""", HttpStatusCode.OK, jsonHeader)
+        }
+        val repo = AuthRepository(api(store, engine), store)
+
+        assertTrue(repo.tryRefresh())
+        assertEquals("fresh", store.getAccessToken())
+        assertEquals("rotated-ref", store.getRefreshToken())
+    }
+
+    @Test
+    fun tryRefreshKeepsExistingRefreshTokenWhenServerOmitsIt() = runTest {
+        // Defensive: if the server ever omits `refresh`, keep the one we have rather
+        // than nulling it out.
+        val store = FakeTokenStore(refresh = "old-ref")
+        val engine = MockEngine { respond("""{"access":"fresh"}""", HttpStatusCode.OK, jsonHeader) }
+        val repo = AuthRepository(api(store, engine), store)
+
+        assertTrue(repo.tryRefresh())
+        assertEquals("fresh", store.getAccessToken())
+        assertEquals("old-ref", store.getRefreshToken())
+    }
+
+    @Test
     fun tryRefreshClearsTokensAndReturnsFalseOnFailure() = runTest {
         val store = FakeTokenStore(refresh = "bad")
         val engine = MockEngine { respond("", HttpStatusCode.Unauthorized) }

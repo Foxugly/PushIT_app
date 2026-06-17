@@ -87,6 +87,11 @@ class AuthRepository(
         return result.fold(
             onSuccess = { response ->
                 tokenStorage.setAccessToken(response.access)
+                // The backend rotates + blacklists refresh tokens, so a successful
+                // refresh returns a new one here. Persist it (mirroring the request-path
+                // AuthInterceptor), otherwise the next refresh sends the now-blacklisted
+                // token, fails, and ejects the user right after launch.
+                response.refresh?.let { tokenStorage.setRefreshToken(it) }
                 AppLogger.info(tag, "Startup token refresh succeeded")
                 true
             },
