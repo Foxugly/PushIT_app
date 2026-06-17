@@ -7,11 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Typeface
 import android.os.Build
-import android.text.Spannable
-import android.text.SpannableStringBuilder
-import android.text.style.StyleSpan
 import androidx.core.app.NotificationCompat
 import androidx.core.app.Person
 import androidx.core.content.pm.ShortcutInfoCompat
@@ -79,37 +75,26 @@ class PushItFirebaseService : FirebaseMessagingService() {
         val logo = if (!logoUrl.isNullOrBlank()) downloadBitmap(logoUrl) else null
         if (logo != null && !appName.isNullOrBlank()) {
             // Messenger/WhatsApp look: the app logo is the sender avatar (LEFT), with
-            // the branded PushIT small icon as a corner badge. The title becomes the
-            // conversation title; the body is the message from "<app>".
-            // Logo (avatar, left) only — no bold title/sender line. The sender label
-            // is a blank space (an empty name throws), and the title + body go inline
-            // in the message itself.
+            // the branded PushIT small icon as a corner badge.
+            // The TITLE is the sender name — MessagingStyle renders it bold on line 1,
+            // followed by the timestamp ("• now"). The BODY is the message, on line 2.
+            // Conversation (WhatsApp-style) look: the app logo is the LEFT avatar with
+            // the PushIT small icon as a corner badge, and the notification stays out of
+            // the OS bundle (each app = its own conversation). The TITLE drives line 1:
+            // it is both the conversation label (shortcut) and the sender name, so the
+            // header reads "<title> • now"; the BODY is the message on the line below.
             val sender = Person.Builder()
-                .setName(" ")
+                .setName(title.ifBlank { appName })
                 .setIcon(IconCompat.createWithBitmap(logo))
                 .build()
-            // Bold title, then the body on a new line.
-            val messageText = SpannableStringBuilder().apply {
-                if (title.isNotBlank()) {
-                    val start = length
-                    append(title)
-                    setSpan(StyleSpan(Typeface.BOLD), start, length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                }
-                if (body.isNotBlank()) {
-                    if (isNotEmpty()) append("\n")
-                    append(body)
-                }
-                if (isEmpty()) append(" ")
-            }
-            // Conversation notification (WhatsApp-style): a long-lived shortcut tied
-            // to this app's "person" promotes the notification to the Conversations
-            // section and renders the app logo (avatar) with the PushIT small icon as
-            // a corner badge — instead of the small icon sitting in the header.
+            val messageText = body.ifBlank { " " }
+            // One conversation per app (stable id → same-app pushes update in place;
+            // different apps show separately), labelled with the latest title.
             val shortcutId = "pushit_conv_" + appName.filter { it.isLetterOrDigit() }.ifBlank { "app" }
             val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
                 ?: Intent(Intent.ACTION_VIEW).setPackage(packageName)
             val shortcut = ShortcutInfoCompat.Builder(this, shortcutId)
-                .setShortLabel(appName.ifBlank { "PushIT" })
+                .setShortLabel(title.ifBlank { appName })
                 .setLongLived(true)
                 .setIcon(IconCompat.createWithBitmap(logo))
                 .setPerson(sender)
