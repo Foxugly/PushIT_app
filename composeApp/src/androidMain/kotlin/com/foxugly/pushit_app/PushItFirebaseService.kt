@@ -9,6 +9,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.core.app.Person
+import androidx.core.graphics.drawable.IconCompat
 import java.net.HttpURLConnection
 import java.net.URL
 import com.foxugly.pushit_app.diagnostics.AppLogger
@@ -68,15 +70,25 @@ class PushItFirebaseService : FirebaseMessagingService() {
             .setContentText(body)
             .setAutoCancel(true)
 
-        // App name in the header → with the app label "PushIT" this reads
-        // "PushIT • <app>" (e.g. "PushIT • app2").
-        if (!appName.isNullOrBlank()) {
-            builder.setSubText(appName)
-        }
-        // The app's own logo as the large (right-side) icon. Best-effort: a failed
-        // or missing download just leaves the branded small icon.
-        if (!logoUrl.isNullOrBlank()) {
-            downloadBitmap(logoUrl)?.let(builder::setLargeIcon)
+        val logo = if (!logoUrl.isNullOrBlank()) downloadBitmap(logoUrl) else null
+        if (logo != null && !appName.isNullOrBlank()) {
+            // Messenger/WhatsApp look: the app logo is the sender avatar (LEFT), with
+            // the branded PushIT small icon as a corner badge. The title becomes the
+            // conversation title; the body is the message from "<app>".
+            val sender = Person.Builder()
+                .setName(appName)
+                .setIcon(IconCompat.createWithBitmap(logo))
+                .build()
+            builder.setStyle(
+                NotificationCompat.MessagingStyle(sender)
+                    .setConversationTitle(title)
+                    .addMessage(body, System.currentTimeMillis(), sender),
+            )
+        } else {
+            // Fallback (no logo): app name as subtext → header reads "PushIT • <app>".
+            if (!appName.isNullOrBlank()) {
+                builder.setSubText(appName)
+            }
         }
 
         // Tapping the notification opens the app and (when known) deep-links to
