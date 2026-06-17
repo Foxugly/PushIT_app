@@ -49,7 +49,7 @@ class PushItFirebaseService : FirebaseMessagingService() {
         }
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(resolveSmallIcon())
             .setContentTitle(title)
             .setContentText(body)
             .setAutoCancel(true)
@@ -61,6 +61,14 @@ class PushItFirebaseService : FirebaseMessagingService() {
 
         notificationManager.notify(System.currentTimeMillis().toInt(), builder.build())
         AppLogger.info(TAG, "Local notification displayed deepLinkId=${notificationId ?: "none"}")
+    }
+
+    // Branded monochrome notification icon (white "P" with the fox cut out). It
+    // lives in the app module's resources, so resolve it by name — the service
+    // can't reference the app module's R. Falls back to a framework icon if absent.
+    private fun resolveSmallIcon(): Int {
+        val id = resources.getIdentifier("ic_notification", "drawable", packageName)
+        return if (id != 0) id else android.R.drawable.ic_dialog_info
     }
 
     private fun deepLinkPendingIntent(notificationId: Int?): PendingIntent? {
