@@ -14,6 +14,8 @@ import android.text.SpannableStringBuilder
 import android.text.style.StyleSpan
 import androidx.core.app.NotificationCompat
 import androidx.core.app.Person
+import androidx.core.content.pm.ShortcutInfoCompat
+import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import java.net.HttpURLConnection
 import java.net.URL
@@ -99,6 +101,23 @@ class PushItFirebaseService : FirebaseMessagingService() {
                 }
                 if (isEmpty()) append(" ")
             }
+            // Conversation notification (WhatsApp-style): a long-lived shortcut tied
+            // to this app's "person" promotes the notification to the Conversations
+            // section and renders the app logo (avatar) with the PushIT small icon as
+            // a corner badge — instead of the small icon sitting in the header.
+            val shortcutId = "pushit_conv_" + appName.filter { it.isLetterOrDigit() }.ifBlank { "app" }
+            val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+                ?: Intent(Intent.ACTION_VIEW).setPackage(packageName)
+            val shortcut = ShortcutInfoCompat.Builder(this, shortcutId)
+                .setShortLabel(appName.ifBlank { "PushIT" })
+                .setLongLived(true)
+                .setIcon(IconCompat.createWithBitmap(logo))
+                .setPerson(sender)
+                .setIntent(launchIntent)
+                .build()
+            ShortcutManagerCompat.pushDynamicShortcut(this, shortcut)
+
+            builder.setShortcutId(shortcutId)
             builder.setStyle(
                 NotificationCompat.MessagingStyle(sender)
                     .addMessage(messageText, System.currentTimeMillis(), sender),
