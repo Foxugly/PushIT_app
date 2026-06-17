@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- PushIT emerald — tints the notification small icon / app-name accent. -->
+    <color name="pushit_notification_accent">#10B981</color>
+</resources>
