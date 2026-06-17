@@ -79,10 +79,13 @@ class PushItFirebaseService : FirebaseMessagingService() {
                 .setName(appName)
                 .setIcon(IconCompat.createWithBitmap(logo))
                 .build()
+            // App name as the conversation headline (first), then the notification
+            // title + body as the message (after the app name).
+            val messageText = listOf(title, body).filter { it.isNotBlank() }.joinToString(" — ")
             builder.setStyle(
                 NotificationCompat.MessagingStyle(sender)
-                    .setConversationTitle(title)
-                    .addMessage(body, System.currentTimeMillis(), sender),
+                    .setConversationTitle(appName)
+                    .addMessage(messageText, System.currentTimeMillis(), sender),
             )
         } else {
             // Fallback (no logo): app name as subtext → header reads "PushIT • <app>".
