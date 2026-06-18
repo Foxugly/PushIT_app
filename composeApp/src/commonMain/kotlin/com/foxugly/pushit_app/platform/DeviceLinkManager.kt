@@ -11,6 +11,13 @@ import com.foxugly.pushit_app.data.api.PushItApi
 import com.foxugly.pushit_app.data.storage.TokenStore
 import com.foxugly.pushit_app.diagnostics.AppLogger
 import com.foxugly.pushit_app.getPlatform
+import kotlin.concurrent.Volatile
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 data class DeviceConnectionState(
     val deviceId: Int,
@@ -22,10 +29,25 @@ class DeviceLinkManager(
     private val api: PushItApi,
     private val tokenStorage: TokenStore,
     private val fcmTokenProvider: FcmTokenSource,
+    // Scope used to route the FCM-callback-thread cache reset through [linkMutex]
+    // instead of writing the cache directly off-thread. Overridable in tests.
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private val tag = "PushIT/DeviceLink"
+
+    // The link "already-linked" cache. Read from coroutines (linkWithAppToken) and
+    // reset from the FCM callback thread (startObservingTokenChanges / forgetAppToken),
+    // so the fields are @Volatile for safe cross-thread visibility and every mutating
+    // path runs single-flight under [linkMutex].
+    @Volatile
     private var lastLinkedFcmToken: String? = null
+    @Volatile
     private var lastLinkedAppToken: String? = null
+
+    // Single-flight guard around the link critical section: serializes the
+    // check-then-link-then-update-cache sequence so two concurrent coroutines can't
+    // both decide to link and clobber the cache.
+    private val linkMutex = Mutex()
 
     suspend fun identify(): Result<DeviceIdentifyResponse?> {
         tokenStorage.getAccessToken() ?: run {
@@ -122,41 +144,45 @@ class DeviceLinkManager(
             AppLogger.warn(tag, "Device link skipped: no FCM token yet")
             return Result.success(null)
         }
-        if (fcmToken == lastLinkedFcmToken && appToken == lastLinkedAppToken) {
-            AppLogger.info(tag, "Device link skipped: token pair already linked")
-            return Result.success(
-                existingIdentify?.let {
-                    DeviceConnectionState(
-                        deviceId = it.deviceId,
-                        linkedApplications = it.linkedApplications,
-                    )
-                }
-            )
-        }
+        // Single-flight: serialize the check-then-link-then-cache-update so two
+        // concurrent callers can't both pass the dedup check and double-link.
+        return linkMutex.withLock {
+            if (fcmToken == lastLinkedFcmToken && appToken == lastLinkedAppToken) {
+                AppLogger.info(tag, "Device link skipped: token pair already linked")
+                return@withLock Result.success(
+                    existingIdentify?.let {
+                        DeviceConnectionState(
+                            deviceId = it.deviceId,
+                            linkedApplications = it.linkedApplications,
+                        )
+                    }
+                )
+            }
 
-        val platform = getPlatform()
-        AppLogger.info(tag, "Linking device platform=${platform.platformType} name=${platform.deviceName}")
-        val result = api.linkDevice(
-            DeviceLinkRequest(
-                appToken = appToken,
-                pushToken = fcmToken,
-                platform = platform.platformType,
-                deviceName = platform.deviceName,
+            val platform = getPlatform()
+            AppLogger.info(tag, "Linking device platform=${platform.platformType} name=${platform.deviceName}")
+            val result = api.linkDevice(
+                DeviceLinkRequest(
+                    appToken = appToken,
+                    pushToken = fcmToken,
+                    platform = platform.platformType,
+                    deviceName = platform.deviceName,
+                )
             )
-        )
 
-        return result.map {
-            lastLinkedFcmToken = fcmToken
-            lastLinkedAppToken = appToken
-            AppLogger.info(tag, "Device linked id=${it.deviceId} deviceCreated=${it.deviceCreated} linkCreated=${it.linkCreated}")
-            val refreshedLinks = identify().getOrNull()?.linkedApplications ?: existingIdentify?.linkedApplications.orEmpty()
-            DeviceConnectionState(
-                deviceId = it.deviceId,
-                linkedApplications = refreshedLinks,
-                linkCreated = it.linkCreated,
-            )
-        }.onFailure {
-            AppLogger.error(tag, "Device link failed: ${it.message}", it)
+            result.map {
+                lastLinkedFcmToken = fcmToken
+                lastLinkedAppToken = appToken
+                AppLogger.info(tag, "Device linked id=${it.deviceId} deviceCreated=${it.deviceCreated} linkCreated=${it.linkCreated}")
+                val refreshedLinks = identify().getOrNull()?.linkedApplications ?: existingIdentify?.linkedApplications.orEmpty()
+                DeviceConnectionState(
+                    deviceId = it.deviceId,
+                    linkedApplications = refreshedLinks,
+                    linkCreated = it.linkCreated,
+                )
+            }.onFailure {
+                AppLogger.error(tag, "Device link failed: ${it.message}", it)
+            }
         }
     }
 
@@ -206,7 +232,7 @@ class DeviceLinkManager(
         }
     }
 
-    private fun forgetAppTokenLocally() {
+    private suspend fun forgetAppTokenLocally() = linkMutex.withLock {
         tokenStorage.setAppToken(null)
         lastLinkedAppToken = null
         lastLinkedFcmToken = null
@@ -215,8 +241,13 @@ class DeviceLinkManager(
     fun startObservingTokenChanges(onLink: (Result<Boolean>) -> Unit) {
         fcmTokenProvider.observeTokenChanges { newToken ->
             AppLogger.info(tag, "Observed FCM token change")
-            lastLinkedFcmToken = null
-            onLink(Result.success(false))
+            // Route the cache reset through linkMutex (off the FCM callback thread)
+            // so it can't race a concurrent link. The relink itself is driven by
+            // onLink → linkWithAppToken, which re-takes the same lock.
+            scope.launch {
+                linkMutex.withLock { lastLinkedFcmToken = null }
+                onLink(Result.success(false))
+            }
         }
     }
 

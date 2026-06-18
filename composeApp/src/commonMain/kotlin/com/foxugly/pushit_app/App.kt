@@ -76,7 +76,9 @@ fun App(
     val authRepository = remember(api) { AuthRepository(api, tokenStore) }
     val notificationRepository = remember(api) { NotificationRepository(api) }
     val inbox = remember(notificationRepository) {
-        InboxStore(notificationRepository, tokenStorage, FcmTokenProviderSource(fcmTokenProvider))
+        // tokenStore (TokenStorageStore) also implements InboxStateStore — the inbox
+        // only needs the notification-state blob, not the secret tokens.
+        InboxStore(notificationRepository, tokenStore, FcmTokenProviderSource(fcmTokenProvider))
     }
     val deviceLinkManager = remember(api) {
         DeviceLinkManager(api, tokenStore, FcmTokenProviderSource(fcmTokenProvider))
@@ -259,6 +261,8 @@ fun App(
                         onNavigateToQrScanner = { session.navigateTo(Screen.QrScanner) },
                         onLogout = { session.resetTo(Screen.Login) },
                         onBack = { session.navigateBack() },
+                        // Keep inbox folders in sync when an app is unlinked in Settings.
+                        onLinkedAppsChanged = { inbox.updateLinkedApps(it) },
                     )
                 }
             }

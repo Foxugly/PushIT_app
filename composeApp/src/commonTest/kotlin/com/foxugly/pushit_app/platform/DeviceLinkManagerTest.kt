@@ -8,6 +8,12 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -24,10 +30,20 @@ private const val IDENTIFY_OK =
 private const val IDENTIFY_NO_LINKS =
     """{"status":"ok","device_id":1,"device_created":false,"linked_applications":[]}"""
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class DeviceLinkManagerTest {
 
-    private fun manager(store: FakeTokenStore, fcm: FakeFcmTokenSource, engine: MockEngine) =
-        DeviceLinkManager(PushItApi(store, baseUrl = "https://test/api/v1/", engine = engine), store, fcm)
+    private fun manager(
+        store: FakeTokenStore,
+        fcm: FakeFcmTokenSource,
+        engine: MockEngine,
+        scope: CoroutineScope? = null,
+    ) = DeviceLinkManager(
+        PushItApi(store, baseUrl = "https://test/api/v1/", engine = engine),
+        store,
+        fcm,
+        scope ?: CoroutineScope(UnconfinedTestDispatcher()),
+    )
 
     @Test
     fun identifySkippedWithoutAccessToken() = runTest {
@@ -160,19 +176,54 @@ class DeviceLinkManagerTest {
     }
 
     @Test
-    fun stopObservingDetachesTheCallback() {
+    fun stopObservingDetachesTheCallback() = runTest {
+        // The reset-on-token-change now dispatches through the manager's scope (so it
+        // can take linkMutex off the FCM callback thread); drive it with the test
+        // scheduler. Inject a scope on this test's dispatcher so launches are advanced
+        // by runCurrent().
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
         val fcm = FakeFcmTokenSource("fcm")
         val engine = MockEngine { respond(IDENTIFY_OK, HttpStatusCode.OK, jsonHeader) }
-        val mgr = manager(FakeTokenStore(access = "a"), fcm, engine)
+        val mgr = manager(FakeTokenStore(access = "a"), fcm, engine, scope)
 
         var observed = 0
         mgr.startObservingTokenChanges { observed++ }
         fcm.emit("rotated")
+        runCurrent()
         assertEquals(1, observed, "observer should fire on token change")
 
         mgr.stopObservingTokenChanges()
         assertTrue(fcm.observerDetached)
         fcm.emit("again")
+        runCurrent()
         assertEquals(1, observed, "no more callbacks after stopObserving")
+    }
+
+    @Test
+    fun concurrentLinksAreSingleFlight() = runTest {
+        // Two concurrent link attempts with the same token pair must hit the network
+        // once: the mutex serializes the check-then-link so the second sees the cache
+        // populated and skips the redundant /devices/link/ call.
+        val links = mutableListOf<String>()
+        val engine = MockEngine { request ->
+            if (request.url.encodedPath.endsWith("/devices/link/")) {
+                links += request.url.encodedPath
+                respond(
+                    """{"status":"ok","device_id":1,"device_created":false,"link_created":true,"application_id":2}""",
+                    HttpStatusCode.OK, jsonHeader,
+                )
+            } else {
+                respond(IDENTIFY_NO_LINKS, HttpStatusCode.OK, jsonHeader)
+            }
+        }
+        val mgr = manager(FakeTokenStore(access = "a", app = "apt_x"), FakeFcmTokenSource("fcm"), engine)
+
+        coroutineScope {
+            val a = async { mgr.linkWithStoredAppToken() }
+            val b = async { mgr.linkWithStoredAppToken() }
+            assertTrue(a.await().isSuccess && b.await().isSuccess)
+        }
+
+        assertEquals(1, links.size, "concurrent identical links must dedup to a single /devices/link/")
     }
 }

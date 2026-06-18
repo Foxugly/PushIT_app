@@ -27,6 +27,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.foxugly.pushit_app.diagnostics.AppLogger
+import com.foxugly.pushit_app.ui.i18n.LocalStrings
 import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -40,6 +41,7 @@ actual fun QrScannerView(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val strings = LocalStrings.current
 
     var hasCameraPermission by remember {
         mutableStateOf(
@@ -64,10 +66,10 @@ actual fun QrScannerView(
     if (!hasCameraPermission) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Camera permission is required to scan QR codes.")
+                Text(strings.cameraPermissionRationale)
                 Spacer(Modifier.height(16.dp))
                 Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
-                    Text("Grant Permission")
+                    Text(strings.grantPermission)
                 }
             }
         }
@@ -122,8 +124,10 @@ actual fun QrScannerView(
                         imageAnalysis,
                     )
                 } catch (e: Exception) {
+                    // Surface a neutral localized message, not the raw exception text
+                    // (which is English, internal and not user-meaningful).
                     AppLogger.error(TAG, "Camera setup failed", e)
-                    onError(e.message ?: "Camera setup failed")
+                    onError(strings.cameraSetupFailed)
                 }
             }, ContextCompat.getMainExecutor(ctx))
 

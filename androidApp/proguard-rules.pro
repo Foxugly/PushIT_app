@@ -28,3 +28,16 @@
 
 # --- Firebase Cloud Messaging service (instantiated by the framework) ---
 -keep class com.foxugly.pushit_app.PushItFirebaseService { *; }
+
+# --- Strip verbose logging from release ---
+# R8 is enabled for release (isMinifyEnabled = true), so -assumenosideeffects
+# genuinely removes these calls from the optimized bytecode. AppLogger.debug/info
+# map to Log.d/Log.i; this drops them (plus any Log.v) so release builds don't emit
+# lifecycle / endpoint traffic to logcat. Log.w / Log.e are KEPT for crash diagnostics
+# (AppLogger.warn / AppLogger.error stay), as does the Ktor logger which is already
+# gated to LogLevel.NONE in release.
+-assumenosideeffects class android.util.Log {
+    public static int d(...);
+    public static int v(...);
+    public static int i(...);
+}

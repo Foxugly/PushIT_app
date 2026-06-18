@@ -272,9 +272,15 @@ private fun FolderRow(folder: InboxFolder, inbox: InboxStore, onClick: () -> Uni
 
 @Composable
 private fun rememberLogo(url: String?, inbox: InboxStore): ImageBitmap? {
-    var bitmap by remember(url) { mutableStateOf<ImageBitmap?>(null) }
+    // Seed from the inbox's decoded-logo cache so a row scrolling back into view
+    // shows its logo immediately (no flash, no re-download). Only fetch on a miss.
+    var bitmap by remember(url) {
+        mutableStateOf(if (url.isNullOrBlank()) null else inbox.cachedLogo(url))
+    }
     LaunchedEffect(url) {
-        bitmap = if (url.isNullOrBlank()) null else inbox.loadImage(url)
+        if (bitmap == null && !url.isNullOrBlank()) {
+            bitmap = inbox.loadImage(url)
+        }
     }
     return bitmap
 }

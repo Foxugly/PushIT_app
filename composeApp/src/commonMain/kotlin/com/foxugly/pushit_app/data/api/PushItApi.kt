@@ -95,7 +95,12 @@ class PushItApi(
     suspend fun logout(refreshToken: String): Result<Unit> = runCatching {
         val response = client.post("auth/logout/") { setBody(RefreshRequest(refreshToken)) }
         logResponse("logout", response)
-        if (!response.status.isSuccess()) {
+        // A 401 here means the session is already gone server-side (expired/blacklisted
+        // access token). We're tearing the session down anyway, so treat it as success
+        // instead of letting it bubble up — a recoverable-but-expired session must not
+        // turn logout into a scary error, and there's nothing to refresh-and-retry for
+        // a token we're about to discard. Other non-2xx (5xx) still surface.
+        if (!response.status.isSuccess() && response.status != HttpStatusCode.Unauthorized) {
             throw response.toApiException("logout")
         }
     }
@@ -165,13 +170,32 @@ class PushItApi(
         }
     }
 
-    // Raw bytes of an (absolute) image URL — used to load app logos. Not JSON,
-    // so it bypasses apiCall's decode path.
+    // Raw bytes of an (absolute) image URL — used to load app logos. Not JSON, so
+    // it can't go through apiCall's decode path, but it still must honour the same
+    // 401 → refresh → replay contract as every authenticated request (logos are
+    // served behind auth). We run the request, and on a 401 refresh once and retry
+    // the GET with the fresh token (re-attached by the AuthInterceptor) before
+    // giving up. A non-recoverable failure surfaces as a failed Result.
     suspend fun getImageBytes(url: String): Result<ByteArray> = runCatching {
-        client.get(url).readRawBytes()
+        val staleAccessToken = tokenStorage.getAccessToken()
+        var response = client.get(url)
+        if (response.status == HttpStatusCode.Unauthorized) {
+            AppLogger.warn(tag, "Image GET got 401, attempting token refresh")
+            if (authInterceptor.refreshIfNeeded(client, staleAccessToken)) {
+                response = client.get(url)
+            }
+        }
+        if (!response.status.isSuccess()) {
+            throw response.toApiException("getImageBytes")
+        }
+        response.readRawBytes()
     }
 
     // --- Helpers ---
+    // IMPORTANT: every authenticated request must go through [apiCall] (or, for the
+    // few non-JSON cases like getImageBytes, replicate its 401 → refreshIfNeeded →
+    // replay contract). Bypassing it means a recoverable expired session is treated
+    // as a hard failure instead of transparently refreshing.
     private suspend inline fun <reified T> apiCall(
         crossinline block: suspend () -> HttpResponse,
     ): Result<T> = runCatching<T> {

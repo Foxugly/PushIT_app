@@ -31,6 +31,10 @@ fun SettingsScreen(
     onNavigateToQrScanner: () -> Unit,
     onLogout: () -> Unit,
     onBack: () -> Unit,
+    // Called with the new linked-apps list whenever it changes (load / unlink) so
+    // the caller can keep the inbox folders in sync — without unlinking, a folder
+    // for an app just removed here would linger until the next full refresh.
+    onLinkedAppsChanged: (List<LinkedApplication>) -> Unit = {},
 ) {
     val strings = LocalStrings.current
     var userProfile by remember { mutableStateOf<UserProfile?>(null) }
@@ -55,7 +59,10 @@ fun SettingsScreen(
         )
         isLoadingUser = false
         // Refreshed on every entry (e.g. after returning from the QR scanner).
-        deviceLinkManager.listLinkedApplications().onSuccess { linkedApps = it }
+        deviceLinkManager.listLinkedApplications().onSuccess {
+            linkedApps = it
+            onLinkedAppsChanged(it)
+        }
     }
 
     Scaffold(
@@ -181,7 +188,12 @@ fun SettingsScreen(
                                         unlinkingAppId = app.id
                                         unlinkError = null
                                         deviceLinkManager.unlinkApplication(app.id).fold(
-                                            onSuccess = { linkedApps = linkedApps.filterNot { it.id == app.id } },
+                                            onSuccess = {
+                                                val remaining = linkedApps.filterNot { it.id == app.id }
+                                                linkedApps = remaining
+                                                // Drop the now-stale inbox folder reactively.
+                                                onLinkedAppsChanged(remaining)
+                                            },
                                             onFailure = { unlinkError = strings.errorText(it, strings.unlinkFailed) },
                                         )
                                         unlinkingAppId = null

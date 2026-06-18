@@ -1,5 +1,6 @@
 package com.foxugly.pushit_app
 
+import com.foxugly.pushit_app.data.storage.InboxStateStore
 import com.foxugly.pushit_app.data.storage.TokenStore
 import com.foxugly.pushit_app.platform.FcmTokenSource
 
@@ -19,6 +20,12 @@ internal class FakeTokenStore(
     override fun getAppToken() = app
     override fun setAppToken(token: String?) { app = token }
     override fun clearAuthTokens() { access = null; refresh = null; cleared = true }
+}
+
+/** In-memory [InboxStateStore] for tests. */
+internal class FakeInboxStateStore(private var state: String? = null) : InboxStateStore {
+    override fun getNotificationState(): String? = state
+    override fun setNotificationState(json: String?) { state = json }
 }
 
 /** In-memory [FcmTokenSource] for tests. */
