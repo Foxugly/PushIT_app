@@ -33,8 +33,10 @@ android {
         applicationId = "com.foxugly.pushit_app"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
+        // versionCode must strictly increase on every Play upload; versionName is the
+        // human-facing semantic label (matches PUBLICATION_PLAY_STORE.md → "1.0.0").
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.0"
 
         // Debug API base URL — defaults to PROD so a debug build (emulator/device)
         // talks to a real server out of the box. Point it at a local backend with:

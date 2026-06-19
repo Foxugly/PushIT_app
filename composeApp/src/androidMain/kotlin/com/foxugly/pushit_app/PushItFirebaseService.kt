@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
@@ -124,22 +125,46 @@ class PushItFirebaseService : FirebaseMessagingService() {
     }
 
     /** Download an image for the large icon (best-effort; null on any failure).
-     * Runs on the FCM background thread, so a short blocking fetch is fine. */
-    private fun downloadBitmap(url: String): Bitmap? = runCatching {
-        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
-            connectTimeout = 8000
-            readTimeout = 8000
-            doInput = true
+     * Runs on the FCM background thread, so a short blocking fetch is fine.
+     * The URL comes from the (untrusted) push payload, so it is host-allow-listed
+     * first to avoid fetching arbitrary attacker-chosen URLs (SSRF/abuse). */
+    private fun downloadBitmap(url: String): Bitmap? {
+        if (!isLogoUrlAllowed(url)) return null
+        return runCatching {
+            val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 8000
+                readTimeout = 8000
+                doInput = true
+            }
+            try {
+                connection.inputStream.use { BitmapFactory.decodeStream(it) }
+            } finally {
+                connection.disconnect()
+            }
+        }.getOrElse {
+            AppLogger.warn(TAG, "Large-icon download failed: ${it.message}")
+            null
         }
-        try {
-            connection.inputStream.use { BitmapFactory.decodeStream(it) }
-        } finally {
-            connection.disconnect()
-        }
-    }.getOrElse {
-        AppLogger.warn(TAG, "Large-icon download failed: ${it.message}")
-        null
     }
+
+    /** Allow the logo fetch only over https to the known prod backend host; in a
+     * debuggable build also allow the local dev backend (http to the emulator
+     * host-loopback), mirroring MainActivity's LOCAL_API_BASE_URL. Anything else
+     * (other hosts/schemes from a spoofed payload) is rejected and we fall back to
+     * the default small icon. Rejections are logged at debug level only. */
+    private fun isLogoUrlAllowed(rawUrl: String): Boolean {
+        val parsed = runCatching { URL(rawUrl) }.getOrNull()
+        val host = parsed?.host
+        if (parsed != null) {
+            if (parsed.protocol == "https" && host == PROD_LOGO_HOST) return true
+            if (isDebuggable() && parsed.protocol == "http" && host == DEV_LOGO_HOST) return true
+        }
+        AppLogger.debug(TAG, "Rejected logo URL (host not allow-listed): host=${host ?: "?"}")
+        return false
+    }
+
+    private fun isDebuggable(): Boolean =
+        (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
     // Branded monochrome notification icon (white "P" with the fox cut out). It
     // lives in the app module's resources, so resolve it by name — the service
@@ -170,5 +195,11 @@ class PushItFirebaseService : FirebaseMessagingService() {
         // Intent extra carrying the tapped notification's id (string, to match
         // the FCM data key used for the system-tray launch in the background).
         const val EXTRA_NOTIFICATION_ID = "notification_id"
+        // Logo-fetch allow-list. Prod backend host (see MainActivity's
+        // PROD_API_BASE_URL = https://pushit-api.foxugly.com/...); the dev host is
+        // the emulator host-loopback (MainActivity's LOCAL_API_BASE_URL = 10.0.2.2)
+        // and is only honoured in debuggable builds.
+        private const val PROD_LOGO_HOST = "pushit-api.foxugly.com"
+        private const val DEV_LOGO_HOST = "10.0.2.2"
     }
 }
