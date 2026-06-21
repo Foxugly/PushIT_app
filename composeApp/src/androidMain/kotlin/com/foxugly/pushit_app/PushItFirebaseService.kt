@@ -5,7 +5,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ApplicationInfo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
@@ -147,24 +146,16 @@ class PushItFirebaseService : FirebaseMessagingService() {
         }
     }
 
-    /** Allow the logo fetch only over https to the known prod backend host; in a
-     * debuggable build also allow the local dev backend (http to the emulator
-     * host-loopback), mirroring MainActivity's LOCAL_API_BASE_URL. Anything else
-     * (other hosts/schemes from a spoofed payload) is rejected and we fall back to
-     * the default small icon. Rejections are logged at debug level only. */
+    /** Allow the logo fetch only over https to the known prod backend host. Anything
+     * else (other hosts/schemes from a spoofed payload) is rejected and we fall back
+     * to the default small icon. Rejections are logged at debug level only. */
     private fun isLogoUrlAllowed(rawUrl: String): Boolean {
         val parsed = runCatching { URL(rawUrl) }.getOrNull()
         val host = parsed?.host
-        if (parsed != null) {
-            if (parsed.protocol == "https" && host == PROD_LOGO_HOST) return true
-            if (isDebuggable() && parsed.protocol == "http" && host == DEV_LOGO_HOST) return true
-        }
+        if (parsed != null && parsed.protocol == "https" && host == PROD_LOGO_HOST) return true
         AppLogger.debug(TAG, "Rejected logo URL (host not allow-listed): host=${host ?: "?"}")
         return false
     }
-
-    private fun isDebuggable(): Boolean =
-        (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
     // Branded monochrome notification icon (white "P" with the fox cut out). It
     // lives in the app module's resources, so resolve it by name — the service
@@ -195,11 +186,8 @@ class PushItFirebaseService : FirebaseMessagingService() {
         // Intent extra carrying the tapped notification's id (string, to match
         // the FCM data key used for the system-tray launch in the background).
         const val EXTRA_NOTIFICATION_ID = "notification_id"
-        // Logo-fetch allow-list. Prod backend host (see MainActivity's
-        // PROD_API_BASE_URL = https://pushit-api.foxugly.com/...); the dev host is
-        // the emulator host-loopback (MainActivity's LOCAL_API_BASE_URL = 10.0.2.2)
-        // and is only honoured in debuggable builds.
+        // Logo-fetch allow-list: the prod backend host only (see MainActivity's
+        // PROD_API_BASE_URL = https://pushit-api.foxugly.com/...).
         private const val PROD_LOGO_HOST = "pushit-api.foxugly.com"
-        private const val DEV_LOGO_HOST = "10.0.2.2"
     }
 }

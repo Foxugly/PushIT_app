@@ -101,11 +101,7 @@ class MainActivity : ComponentActivity() {
                 tokenStorage = tokenStorage,
                 fcmTokenProvider = fcmTokenProvider,
                 externalRefreshTrigger = refreshTrigger,
-                apiBaseUrl = if (BuildConfig.DEBUG) BuildConfig.DEV_API_BASE_URL else PROD_API_BASE_URL,
-                prodApiBaseUrl = PROD_API_BASE_URL,
-                localApiBaseUrl = LOCAL_API_BASE_URL,
-                // Only debug builds may flip the backend at runtime; release is pinned to prod.
-                allowBackendSwitch = BuildConfig.DEBUG,
+                apiBaseUrl = PROD_API_BASE_URL,
                 enableHttpLogging = BuildConfig.DEBUG,
                 deepLinkNotificationId = deepLinkNotificationId.value,
                 onDeepLinkConsumed = { deepLinkNotificationId.value = null },
@@ -134,13 +130,8 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "PushIT/MainActivity"
-        // Debug builds use BuildConfig.DEV_API_BASE_URL (overridable via the
-        // -PpushitDevApiBaseUrl gradle property; defaults to the emulator host
-        // loopback 10.0.2.2:8000). Release builds always use prod.
+        // Both release and debug builds talk to prod; debug only adds HTTP logging.
         private const val PROD_API_BASE_URL = "https://pushit-api.foxugly.com/api/v1/"
-        // Local dev server seen from the Android emulator (host loopback). The
-        // debug-only login toggle flips between this and prod at runtime.
-        private const val LOCAL_API_BASE_URL = "http://10.0.2.2:8000/api/v1/"
     }
 }
 

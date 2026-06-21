@@ -41,11 +41,6 @@ actual class TokenStorage(context: Context) {
         writeToken(KEY_NOTIF_STATE, json)
     }
 
-    actual fun getApiBaseUrl(): String? = readToken(KEY_API_BASE_URL)
-    actual fun setApiBaseUrl(url: String?) {
-        writeToken(KEY_API_BASE_URL, url)
-    }
-
     actual fun clearAuthTokens() {
         // commit() (synchronous) so we know the removal actually persisted —
         // a silently-dropped clear could leave stale tokens on disk.
@@ -97,6 +92,5 @@ actual class TokenStorage(context: Context) {
         private const val KEY_APP_TOKEN = "app_token"
         private const val KEY_LANGUAGE = "ui_language"
         private const val KEY_NOTIF_STATE = "notification_state"
-        private const val KEY_API_BASE_URL = "api_base_url"
     }
 }
