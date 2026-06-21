@@ -51,9 +51,9 @@ In [Google Cloud Console](https://console.cloud.google.com) → project **`pushi
 
 ### Backend URL
 
-`MainActivity` selects the API base URL off `BuildConfig.DEBUG`: debug builds use `http://10.0.2.2:8000/api/v1/`
-(Android emulator → host localhost), release builds use `https://pushit-api.foxugly.com/api/v1/`. Override by
-editing the `DEV_API_BASE_URL` / `PROD_API_BASE_URL` constants in `MainActivity`, or pass a different `apiBaseUrl` into `App()`.
+The app is prod-only: both debug and release builds talk to `https://pushit-api.foxugly.com/api/v1/`
+(`PROD_API_BASE_URL` in `MainActivity`). Debug builds additionally enable HTTP logging. There is no
+local/dev backend or runtime backend switch.
 
 ### Build & Run
 

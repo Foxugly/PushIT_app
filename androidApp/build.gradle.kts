@@ -37,17 +37,10 @@ android {
         // human-facing semantic label (matches PUBLICATION_PLAY_STORE.md → "1.0.0").
         versionCode = 1
         versionName = "1.0.0"
-
-        // Debug API base URL — defaults to PROD so a debug build (emulator/device)
-        // talks to a real server out of the box. Point it at a local backend with:
-        //   ./gradlew :androidApp:installDebug -PpushitDevApiBaseUrl=http://10.0.2.2:8000/api/v1/
-        val devApiBaseUrl = (project.findProperty("pushitDevApiBaseUrl") as String?)
-            ?: "https://pushit-api.foxugly.com/api/v1/"
-        buildConfigField("String", "DEV_API_BASE_URL", "\"$devApiBaseUrl\"")
     }
     buildFeatures {
-        // BuildConfig.DEBUG is read in MainActivity to pick the API base URL +
-        // enable HTTP logging only in debug builds.
+        // BuildConfig.DEBUG is read in MainActivity to enable HTTP logging only in
+        // debug builds.
         buildConfig = true
     }
     signingConfigs {

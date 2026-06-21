@@ -55,7 +55,7 @@ Two-module project (since the `androidApp`/`composeApp` split): **`:composeApp`*
 
 No DI framework. Dependencies are manually constructed in `App.kt`:
 `TokenStorage` → `TokenStorageStore` (the `TokenStore` interface seam, so the data layer is fakeable in tests) → `PushItApi` → `AuthRepository` / `NotificationRepository` / `DeviceLinkManager`.
-Platform-specific `TokenStorage` and `FcmTokenProvider` are created by the platform entry point (`MainActivity` / `MainViewController`) and passed into `App()`. `MainActivity` also passes `apiBaseUrl` (dev `10.0.2.2` vs prod `pushit-api.foxugly.com`, picked off `BuildConfig.DEBUG`) and `enableHttpLogging` into `App()`.
+Platform-specific `TokenStorage` and `FcmTokenProvider` are created by the platform entry point (`MainActivity` / `MainViewController`) and passed into `App()`. The app is prod-only: `MainActivity` passes the fixed prod `apiBaseUrl` (`https://pushit-api.foxugly.com/api/v1/`) and `enableHttpLogging = BuildConfig.DEBUG` into `App()`. There is no local/dev backend or runtime backend switch.
 
 ### Platform Boundaries (expect/actual)
 
@@ -80,7 +80,7 @@ State-driven manual navigation in `App.kt` using `sealed class Screen` + `when`.
 
 ### Backend API
 
-Base URL: `http://10.0.2.2:8000/api/v1/` (Android emulator → localhost). Configurable in `PushItApi.kt` constructor.
+Base URL: `https://pushit-api.foxugly.com/api/v1/` (prod-only). Passed into `PushItApi` from `App()`.
 
 - JWT auth: login, register, refresh, logout, me
 - Device registration: `POST /devices/link/` with `X-App-Token` header

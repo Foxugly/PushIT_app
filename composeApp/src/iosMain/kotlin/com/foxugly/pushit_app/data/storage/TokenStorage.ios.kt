@@ -41,9 +41,9 @@ import platform.Security.kSecValueData
  * iCloud/iTunes backups, never synced across devices). The earlier implementation
  * kept them in `NSUserDefaults`, which is plaintext on disk.
  *
- * Non-secret preferences (UI language, API base-URL override, local inbox read
- * state) stay in `NSUserDefaults` — they need no protection and are convenient to
- * read synchronously.
+ * Non-secret preferences (UI language, local inbox read state) stay in
+ * `NSUserDefaults` — they need no protection and are convenient to read
+ * synchronously.
  *
  * NOTE: this file is iosMain and is only compiled on macOS; it cannot be built on
  * the Windows CI host, so it is verified by review rather than by the JVM test run.
@@ -74,9 +74,6 @@ actual class TokenStorage {
 
     actual fun getNotificationState(): String? = defaults.stringForKey(KEY_NOTIF_STATE)
     actual fun setNotificationState(json: String?) = defaultsSet(KEY_NOTIF_STATE, json)
-
-    actual fun getApiBaseUrl(): String? = defaults.stringForKey(KEY_API_BASE_URL)
-    actual fun setApiBaseUrl(url: String?) = defaultsSet(KEY_API_BASE_URL, url)
 
     private fun defaultsSet(key: String, value: String?) {
         if (value != null) {
@@ -177,6 +174,5 @@ actual class TokenStorage {
         // NSUserDefaults keys (non-secret).
         private const val KEY_LANGUAGE = "pushit_ui_language"
         private const val KEY_NOTIF_STATE = "pushit_notification_state"
-        private const val KEY_API_BASE_URL = "pushit_api_base_url"
     }
 }

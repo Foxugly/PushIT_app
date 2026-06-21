@@ -29,15 +29,7 @@ import pushit_app.composeapp.generated.resources.pushit_logo
 fun LoginScreen(
     authRepository: AuthRepository,
     onLoginSuccess: () -> Unit,
-    apiBaseUrl: String = "",
-    allowBackendSwitch: Boolean = false,
-    prodApiBaseUrl: String = "",
-    localApiBaseUrl: String = "",
-    onSwitchBackend: (String) -> Unit = {},
 ) {
-    // Which backend this build talks to — handy to tell prod from a local dev server.
-    val apiHost = apiBaseUrl.substringAfter("://").substringBefore("/").ifBlank { apiBaseUrl }
-    val isProd = apiHost.contains("foxugly.com")
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
@@ -143,28 +135,6 @@ fun LoginScreen(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-
-        if (apiHost.isNotBlank()) {
-            Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "● " + (if (isProd) strings.backendProd else strings.backendLocal) + " · " + apiHost,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (isProd) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                )
-                // Debug-only runtime backend switch: flip between prod and the local
-                // dev server. Switching clears tokens and returns to login.
-                if (allowBackendSwitch) {
-                    Spacer(Modifier.width(8.dp))
-                    Switch(
-                        checked = !isProd,
-                        onCheckedChange = { toLocal ->
-                            onSwitchBackend(if (toLocal) localApiBaseUrl else prodApiBaseUrl)
-                        },
-                    )
-                }
-            }
-        }
     }
 
         // "by [logo] Foxugly" credit pinned to the bottom.
