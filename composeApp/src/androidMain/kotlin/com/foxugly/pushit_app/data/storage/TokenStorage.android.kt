@@ -26,9 +26,29 @@ actual class TokenStorage(context: Context) {
         writeToken(KEY_REFRESH, token)
     }
 
-    actual fun getAppToken(): String? = readToken(KEY_APP_TOKEN)
-    actual fun setAppToken(token: String?) {
-        writeToken(KEY_APP_TOKEN, token)
+    /**
+     * Le code d'enrôlement (`apk_…`, ou l'ancien jeton `apt_…` d'une install
+     * qui n'a pas re-scanné).
+     *
+     * Migration : la valeur vivait sous `app_token`. On la relit une fois, on la
+     * réécrit sous la nouvelle clé et on efface l'ancienne — sinon un
+     * utilisateur déjà rattaché repartirait de zéro à la mise à jour, écran
+     * « non lié » à l'appui, sans rien avoir fait.
+     */
+    actual fun getEnrolmentCode(): String? =
+        readToken(KEY_ENROLMENT_CODE) ?: migrateLegacyEnrolmentCode()
+
+    actual fun setEnrolmentCode(code: String?) {
+        writeToken(KEY_ENROLMENT_CODE, code)
+    }
+
+    private fun migrateLegacyEnrolmentCode(): String? {
+        val legacy = readToken(KEY_LEGACY_APP_TOKEN) ?: return null
+        writeToken(KEY_ENROLMENT_CODE, legacy)
+        runCatching { prefs.edit().remove(KEY_LEGACY_APP_TOKEN).commit() }
+            .onFailure { AppLogger.error(TAG, "Failed to drop the legacy app_token key", it) }
+        AppLogger.info(TAG, "Enrolment code migrated from the legacy key")
+        return legacy
     }
 
     actual fun getLanguage(): String? = readToken(KEY_LANGUAGE)
@@ -89,7 +109,9 @@ actual class TokenStorage(context: Context) {
         private const val TAG = "PushIT/TokenStorage"
         private const val KEY_ACCESS = "access_token"
         private const val KEY_REFRESH = "refresh_token"
-        private const val KEY_APP_TOKEN = "app_token"
+        private const val KEY_ENROLMENT_CODE = "enrolment_code"
+        // Ancienne clé, lue une seule fois puis effacée (voir la migration).
+        private const val KEY_LEGACY_APP_TOKEN = "app_token"
         private const val KEY_LANGUAGE = "ui_language"
         private const val KEY_NOTIF_STATE = "notification_state"
     }

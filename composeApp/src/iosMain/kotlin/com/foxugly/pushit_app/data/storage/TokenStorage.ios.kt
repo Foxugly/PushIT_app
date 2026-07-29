@@ -60,8 +60,22 @@ actual class TokenStorage {
     actual fun getRefreshToken(): String? = keychainGet(KEY_REFRESH)
     actual fun setRefreshToken(token: String?) = keychainSet(KEY_REFRESH, token)
 
-    actual fun getAppToken(): String? = keychainGet(KEY_APP_TOKEN)
-    actual fun setAppToken(token: String?) = keychainSet(KEY_APP_TOKEN, token)
+    /**
+     * Le code d'enrôlement (`apk_…`, ou l'ancien jeton `apt_…` d'une install qui
+     * n'a pas re-scanné). Migré une fois depuis l'ancien compte Keychain, sinon
+     * la mise à jour déconnecterait un utilisateur déjà rattaché.
+     */
+    actual fun getEnrolmentCode(): String? =
+        keychainGet(KEY_ENROLMENT_CODE) ?: migrateLegacyEnrolmentCode()
+
+    actual fun setEnrolmentCode(code: String?) = keychainSet(KEY_ENROLMENT_CODE, code)
+
+    private fun migrateLegacyEnrolmentCode(): String? {
+        val legacy = keychainGet(KEY_LEGACY_APP_TOKEN) ?: return null
+        keychainSet(KEY_ENROLMENT_CODE, legacy)
+        keychainSet(KEY_LEGACY_APP_TOKEN, null)
+        return legacy
+    }
 
     actual fun clearAuthTokens() {
         keychainSet(KEY_ACCESS, null)
@@ -169,7 +183,9 @@ actual class TokenStorage {
         // Keychain account keys (secrets).
         private const val KEY_ACCESS = "pushit_access_token"
         private const val KEY_REFRESH = "pushit_refresh_token"
-        private const val KEY_APP_TOKEN = "pushit_app_token"
+        private const val KEY_ENROLMENT_CODE = "pushit_enrolment_code"
+        // Ancien compte Keychain, lu une seule fois puis effacé (migration).
+        private const val KEY_LEGACY_APP_TOKEN = "pushit_app_token"
 
         // NSUserDefaults keys (non-secret).
         private const val KEY_LANGUAGE = "pushit_ui_language"

@@ -14,24 +14,22 @@ import com.foxugly.pushit_app.ui.components.ErrorBanner
 import com.foxugly.pushit_app.ui.i18n.LocalStrings
 import com.foxugly.pushit_app.ui.theme.pushItTopAppBarColors
 
-private const val APP_TOKEN_PREFIX = "apt_"
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QrScannerScreen(
     tokenStorage: TokenStorage,
-    onTokenScanned: () -> Unit,
+    onCodeScanned: () -> Unit,
     onBack: () -> Unit,
 ) {
     var manualMode by remember { mutableStateOf(false) }
-    var manualToken by remember { mutableStateOf("") }
+    var manualCode by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     val strings = LocalStrings.current
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(strings.scanAppToken) },
+                title = { Text(strings.scanEnrolmentCode) },
                 colors = pushItTopAppBarColors(),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -60,11 +58,11 @@ fun QrScannerScreen(
                     QrScannerView(
                         onQrCodeScanned = { scanned ->
                             error = null
-                            if (scanned.startsWith(APP_TOKEN_PREFIX)) {
-                                tokenStorage.setAppToken(scanned)
-                                onTokenScanned()
+                            if (looksLikeEnrolmentCode(scanned)) {
+                                tokenStorage.setEnrolmentCode(scanned)
+                                onCodeScanned()
                             } else {
-                                error = strings.invalidQrToken
+                                error = strings.invalidQrCode
                             }
                         },
                         onError = { errorMessage ->
@@ -103,18 +101,18 @@ fun QrScannerScreen(
                     verticalArrangement = Arrangement.Center,
                 ) {
                     Text(
-                        text = strings.enterAppToken,
+                        text = strings.enterEnrolmentCode,
                         style = MaterialTheme.typography.titleLarge,
                     )
                     Spacer(Modifier.height(24.dp))
 
                     OutlinedTextField(
-                        value = manualToken,
+                        value = manualCode,
                         onValueChange = {
-                            manualToken = it
+                            manualCode = it
                             error = null
                         },
-                        label = { Text(strings.tokenFieldLabel) },
+                        label = { Text(strings.codeFieldLabel) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         isError = error != null,
@@ -124,24 +122,24 @@ fun QrScannerScreen(
 
                     Button(
                         onClick = {
-                            val trimmed = manualToken.trim()
-                            if (trimmed.startsWith(APP_TOKEN_PREFIX)) {
-                                tokenStorage.setAppToken(trimmed)
-                                onTokenScanned()
+                            val trimmed = manualCode.trim()
+                            if (looksLikeEnrolmentCode(trimmed)) {
+                                tokenStorage.setEnrolmentCode(trimmed)
+                                onCodeScanned()
                             } else {
-                                error = strings.tokenMustStartWith
+                                error = strings.codeMustStartWith
                             }
                         },
-                        enabled = manualToken.isNotBlank(),
+                        enabled = manualCode.isNotBlank(),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text(strings.saveToken)
+                        Text(strings.saveCode)
                     }
                     Spacer(Modifier.height(16.dp))
 
                     TextButton(
                         onClick = {
-                            manualToken = ""
+                            manualCode = ""
                             error = null
                             manualMode = false
                         },

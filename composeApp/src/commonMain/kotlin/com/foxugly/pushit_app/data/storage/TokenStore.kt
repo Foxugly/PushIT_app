@@ -12,8 +12,8 @@ interface TokenStore {
     fun setAccessToken(token: String?)
     fun getRefreshToken(): String?
     fun setRefreshToken(token: String?)
-    fun getAppToken(): String?
-    fun setAppToken(token: String?)
+    fun getEnrolmentCode(): String?
+    fun setEnrolmentCode(code: String?)
     fun clearAuthTokens()
 }
 
@@ -35,8 +35,8 @@ class TokenStorageStore(private val storage: TokenStorage) : TokenStore, InboxSt
     override fun setAccessToken(token: String?) = storage.setAccessToken(token)
     override fun getRefreshToken(): String? = storage.getRefreshToken()
     override fun setRefreshToken(token: String?) = storage.setRefreshToken(token)
-    override fun getAppToken(): String? = storage.getAppToken()
-    override fun setAppToken(token: String?) = storage.setAppToken(token)
+    override fun getEnrolmentCode(): String? = storage.getEnrolmentCode()
+    override fun setEnrolmentCode(code: String?) = storage.setEnrolmentCode(code)
     override fun clearAuthTokens() = storage.clearAuthTokens()
     override fun getNotificationState(): String? = storage.getNotificationState()
     override fun setNotificationState(json: String?) = storage.setNotificationState(json)

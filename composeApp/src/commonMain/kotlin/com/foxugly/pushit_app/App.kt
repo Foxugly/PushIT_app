@@ -88,7 +88,7 @@ fun App(
         session.start { strings.errorText(it, strings.startupFailed) }
     }
 
-    // Identify the authenticated device and link it when an app token is available.
+    // Identify the authenticated device and link it when an enrolment code is available.
     LaunchedEffect(session.currentScreen) {
         if (session.currentScreen == Screen.NotificationList) {
             deviceLinkManager.syncAuthenticatedDevice()
@@ -152,7 +152,7 @@ fun App(
             }
             state?.let { inbox.updateLinkedApps(it.linkedApplications) }
             val hasKnownLinkedApps = state?.linkedApplications?.isNotEmpty() == true
-            session.resetTo(session.routeAfterLogin(hasKnownLinkedApps, tokenStorage.getAppToken() != null))
+            session.resetTo(session.routeAfterLogin(hasKnownLinkedApps, tokenStorage.getEnrolmentCode() != null))
         }
     }
 
@@ -188,12 +188,12 @@ fun App(
                     )
                     Screen.QrScanner -> QrScannerScreen(
                         tokenStorage = tokenStorage,
-                        onTokenScanned = {
+                        onCodeScanned = {
                             // Link THEN navigate in the same coroutine: the old code
                             // navigated synchronously before the link finished, so a
                             // link failure surfaced on an already-different screen.
                             scope.launch {
-                                deviceLinkManager.linkWithStoredAppToken().onFailure { throwable ->
+                                deviceLinkManager.linkWithStoredEnrolmentCode().onFailure { throwable ->
                                     session.runtimeError = strings.errorText(throwable, strings.deviceLinkFailed)
                                 }
                                 session.resetTo(session.routeAfterQrLink())

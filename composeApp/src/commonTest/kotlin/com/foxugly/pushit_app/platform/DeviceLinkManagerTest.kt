@@ -68,13 +68,13 @@ class DeviceLinkManagerTest {
     }
 
     @Test
-    fun syncWithoutAppTokenIdentifiesAndReturnsLinkedApps() = runTest {
+    fun syncWithoutEnrolmentCodeIdentifiesAndReturnsLinkedApps() = runTest {
         val paths = mutableListOf<String>()
         val engine = MockEngine { request ->
             paths += request.url.encodedPath
             respond(IDENTIFY_OK, HttpStatusCode.OK, jsonHeader)
         }
-        // access + fcm present, but no app token → identify only, no link.
+        // access + fcm present, but no enrolment code → identify only, no link.
         val result = manager(FakeTokenStore(access = "a"), FakeFcmTokenSource("fcm"), engine)
             .syncAuthenticatedDevice()
 
@@ -82,7 +82,7 @@ class DeviceLinkManagerTest {
         val state = result.getOrNull()
         assertEquals(1, state?.deviceId)
         assertEquals(1, state?.linkedApplications?.size)
-        assertTrue(paths.all { it.endsWith("/devices/identify/") }, "no /devices/link/ without an app token")
+        assertTrue(paths.all { it.endsWith("/devices/identify/") }, "no /devices/link/ without an enrolment code")
     }
 
     @Test
@@ -92,7 +92,7 @@ class DeviceLinkManagerTest {
             paths += request.url.encodedPath
             respond(IDENTIFY_OK, HttpStatusCode.OK, jsonHeader)
         }
-        // access + fcm + a stored app token, and identify shows the device is already linked.
+        // access + fcm + a stored enrolment code, and identify shows the device is already linked.
         val result = manager(FakeTokenStore(access = "a", app = "apt_x"), FakeFcmTokenSource("fcm"), engine)
             .syncAuthenticatedDevice()
 
@@ -105,7 +105,7 @@ class DeviceLinkManagerTest {
     }
 
     @Test
-    fun syncSwallowsInvalidAppTokenWhenNotYetLinked() = runTest {
+    fun syncSwallowsInvalidEnrolmentCodeWhenNotYetLinked() = runTest {
         val engine = MockEngine { request ->
             if (request.url.encodedPath.endsWith("/devices/link/")) {
                 respond(
@@ -121,7 +121,7 @@ class DeviceLinkManagerTest {
         val result = manager(FakeTokenStore(access = "a", app = "apt_stale"), FakeFcmTokenSource("fcm"), engine)
             .syncAuthenticatedDevice()
 
-        assertTrue(result.isSuccess, "a stale app token on an automatic sync must be non-fatal")
+        assertTrue(result.isSuccess, "a stale enrolment code on an automatic sync must be non-fatal")
         assertEquals(1, result.getOrNull()?.deviceId)
         assertEquals(0, result.getOrNull()?.linkedApplications?.size)
     }
@@ -142,7 +142,7 @@ class DeviceLinkManagerTest {
     }
 
     @Test
-    fun unlinkClearsLocalAppTokenOnServerSuccess() = runTest {
+    fun unlinkClearsLocalEnrolmentCodeOnServerSuccess() = runTest {
         val store = FakeTokenStore(access = "a", app = "apt_x")
         val engine = MockEngine {
             respond("""{"status":"ok","device_id":1,"application_id":2,"unlinked":true}""", HttpStatusCode.OK, jsonHeader)
@@ -151,11 +151,11 @@ class DeviceLinkManagerTest {
 
         assertTrue(result.isSuccess, "${result.exceptionOrNull()}")
         assertEquals(true, result.getOrNull())
-        assertNull(store.getAppToken(), "local app token must be cleared after a server unlink")
+        assertNull(store.getEnrolmentCode(), "the local enrolment code must be cleared after a server unlink")
     }
 
     @Test
-    fun unlinkIsNoOpWithoutAppToken() = runTest {
+    fun unlinkIsNoOpWithoutEnrolmentCode() = runTest {
         var hit = false
         val engine = MockEngine { hit = true; respond("", HttpStatusCode.OK) }
         val result = manager(FakeTokenStore(access = "a"), FakeFcmTokenSource("fcm"), engine).unlinkCurrentDevice()
@@ -166,13 +166,13 @@ class DeviceLinkManagerTest {
     }
 
     @Test
-    fun unlinkKeepsLocalAppTokenOnServerFailure() = runTest {
+    fun unlinkKeepsLocalEnrolmentCodeOnServerFailure() = runTest {
         val store = FakeTokenStore(access = "a", app = "apt_x")
         val engine = MockEngine { respond("""{"detail":"boom"}""", HttpStatusCode.InternalServerError, jsonHeader) }
         val result = manager(store, FakeFcmTokenSource("fcm"), engine).unlinkCurrentDevice()
 
         assertTrue(result.isFailure)
-        assertEquals("apt_x", store.getAppToken(), "keep the app token so the user can retry")
+        assertEquals("apt_x", store.getEnrolmentCode(), "keep the enrolment code so the user can retry")
     }
 
     @Test
@@ -219,8 +219,8 @@ class DeviceLinkManagerTest {
         val mgr = manager(FakeTokenStore(access = "a", app = "apt_x"), FakeFcmTokenSource("fcm"), engine)
 
         coroutineScope {
-            val a = async { mgr.linkWithStoredAppToken() }
-            val b = async { mgr.linkWithStoredAppToken() }
+            val a = async { mgr.linkWithStoredEnrolmentCode() }
+            val b = async { mgr.linkWithStoredEnrolmentCode() }
             assertTrue(a.await().isSuccess && b.await().isSuccess)
         }
 
