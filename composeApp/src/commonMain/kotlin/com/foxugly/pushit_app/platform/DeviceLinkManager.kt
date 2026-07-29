@@ -35,14 +35,14 @@ class DeviceLinkManager(
 ) {
     private val tag = "PushIT/DeviceLink"
 
-    // The link "already-linked" cache. Read from coroutines (linkWithAppToken) and
-    // reset from the FCM callback thread (startObservingTokenChanges / forgetAppToken),
+    // The link "already-linked" cache. Read from coroutines (linkWithEnrolmentCode) and
+    // reset from the FCM callback thread (startObservingTokenChanges / forgetEnrolmentCode),
     // so the fields are @Volatile for safe cross-thread visibility and every mutating
     // path runs single-flight under [linkMutex].
     @Volatile
     private var lastLinkedFcmToken: String? = null
     @Volatile
-    private var lastLinkedAppToken: String? = null
+    private var lastLinkedEnrolmentCode: String? = null
 
     // Single-flight guard around the link critical section: serializes the
     // check-then-link-then-update-cache sequence so two concurrent coroutines can't
@@ -83,9 +83,9 @@ class DeviceLinkManager(
             return identifyResult.map { null }
         }
         val identified = identifyResult.getOrNull() ?: return Result.success(null)
-        val appToken = tokenStorage.getAppToken()
-        if (appToken == null) {
-            AppLogger.info(tag, "Device link skipped: no app token")
+        val enrolmentCode = tokenStorage.getEnrolmentCode()
+        if (enrolmentCode == null) {
+            AppLogger.info(tag, "Device link skipped: no enrolment code")
             return Result.success(
                 DeviceConnectionState(
                     deviceId = identified.deviceId,
@@ -95,9 +95,9 @@ class DeviceLinkManager(
         }
         // Already linked: identify() above already refreshed the FCM push token, and
         // the server keeps existing app links even after an app-token rotation. Re-sending
-        // the stored (possibly stale) app token on every launch would only risk a spurious
+        // the stored (possibly stale) enrolment code on every launch would only risk a spurious
         // `app_token_invalid`, so skip the redundant automatic re-link. Linking an extra
-        // application is done explicitly via QR scan (linkWithStoredAppToken).
+        // application is done explicitly via QR scan (linkWithStoredEnrolmentCode).
         if (identified.linkedApplications.isNotEmpty()) {
             AppLogger.info(tag, "Device link skipped: already linked to ${identified.linkedApplications.size} app(s)")
             return Result.success(
@@ -107,13 +107,13 @@ class DeviceLinkManager(
                 )
             )
         }
-        // Not yet linked: best-effort automatic link. A 401 here (a stale app token that no
+        // Not yet linked: best-effort automatic link. A 401 here (a stale enrolment code that no
         // longer matches any app, e.g. after a rotation) is non-fatal for an automatic sync —
         // log it and fall back to the identify state instead of surfacing a scary error.
-        // Explicit QR-scan linking (linkWithStoredAppToken) still surfaces failures.
-        return linkWithAppToken(appToken, identified).recoverCatching { error ->
+        // Explicit QR-scan linking (linkWithStoredEnrolmentCode) still surfaces failures.
+        return linkWithEnrolmentCode(enrolmentCode, identified).recoverCatching { error ->
             if (error is ApiException && error.statusCode == 401) {
-                AppLogger.warn(tag, "Automatic device link got 401 (stale app token), ignoring: ${error.message}")
+                AppLogger.warn(tag, "Automatic device link got 401 (stale enrolment code), ignoring: ${error.message}")
                 DeviceConnectionState(
                     deviceId = identified.deviceId,
                     linkedApplications = identified.linkedApplications,
@@ -124,16 +124,16 @@ class DeviceLinkManager(
         }
     }
 
-    suspend fun linkWithStoredAppToken(): Result<DeviceConnectionState?> {
-        val appToken = tokenStorage.getAppToken() ?: run {
-            AppLogger.info(tag, "Device link skipped: no app token")
+    suspend fun linkWithStoredEnrolmentCode(): Result<DeviceConnectionState?> {
+        val enrolmentCode = tokenStorage.getEnrolmentCode() ?: run {
+            AppLogger.info(tag, "Device link skipped: no enrolment code")
             return Result.success(null)
         }
-        return linkWithAppToken(appToken, existingIdentify = null)
+        return linkWithEnrolmentCode(enrolmentCode, existingIdentify = null)
     }
 
-    private suspend fun linkWithAppToken(
-        appToken: String,
+    private suspend fun linkWithEnrolmentCode(
+        enrolmentCode: String,
         existingIdentify: DeviceIdentifyResponse?,
     ): Result<DeviceConnectionState?> {
         tokenStorage.getAccessToken() ?: run {
@@ -147,7 +147,7 @@ class DeviceLinkManager(
         // Single-flight: serialize the check-then-link-then-cache-update so two
         // concurrent callers can't both pass the dedup check and double-link.
         return linkMutex.withLock {
-            if (fcmToken == lastLinkedFcmToken && appToken == lastLinkedAppToken) {
+            if (fcmToken == lastLinkedFcmToken && enrolmentCode == lastLinkedEnrolmentCode) {
                 AppLogger.info(tag, "Device link skipped: token pair already linked")
                 return@withLock Result.success(
                     existingIdentify?.let {
@@ -163,7 +163,7 @@ class DeviceLinkManager(
             AppLogger.info(tag, "Linking device platform=${platform.platformType} name=${platform.deviceName}")
             val result = api.linkDevice(
                 DeviceLinkRequest(
-                    appToken = appToken,
+                    appToken = enrolmentCode,
                     pushToken = fcmToken,
                     platform = platform.platformType,
                     deviceName = platform.deviceName,
@@ -172,7 +172,7 @@ class DeviceLinkManager(
 
             result.map {
                 lastLinkedFcmToken = fcmToken
-                lastLinkedAppToken = appToken
+                lastLinkedEnrolmentCode = enrolmentCode
                 AppLogger.info(tag, "Device linked id=${it.deviceId} deviceCreated=${it.deviceCreated} linkCreated=${it.linkCreated}")
                 val refreshedLinks = identify().getOrNull()?.linkedApplications ?: existingIdentify?.linkedApplications.orEmpty()
                 DeviceConnectionState(
@@ -188,23 +188,23 @@ class DeviceLinkManager(
 
     /**
      * Unlink this device from its linked application: tell the server to
-     * deactivate the link, then forget the app token locally. Returns
+     * deactivate the link, then forget the enrolment code locally. Returns
      * success(false) when there was nothing linked. On a server failure the
-     * local app token is kept (so the user can retry) — except when there's no
+     * local enrolment code is kept (so the user can retry) — except when there's no
      * FCM token to identify the device server-side, in which case we can only
      * clear locally.
      */
     suspend fun unlinkCurrentDevice(): Result<Boolean> {
-        val appToken = tokenStorage.getAppToken() ?: return Result.success(false)
+        val enrolmentCode = tokenStorage.getEnrolmentCode() ?: return Result.success(false)
         val fcmToken = fcmTokenProvider.getCurrentToken()
         if (fcmToken == null) {
-            AppLogger.warn(tag, "Unlink: no FCM token, clearing app token locally only")
-            forgetAppTokenLocally()
+            AppLogger.warn(tag, "Unlink: no FCM token, clearing the enrolment code locally only")
+            forgetEnrolmentCodeLocally()
             return Result.success(true)
         }
-        return api.unlinkDevice(DeviceUnlinkRequest(appToken = appToken, pushToken = fcmToken)).map {
+        return api.unlinkDevice(DeviceUnlinkRequest(appToken = enrolmentCode, pushToken = fcmToken)).map {
             AppLogger.info(tag, "Device unlinked server-side (unlinked=${it.unlinked})")
-            forgetAppTokenLocally()
+            forgetEnrolmentCodeLocally()
             true
         }.onFailure {
             AppLogger.error(tag, "Device unlink failed: ${it.message}", it)
@@ -217,7 +217,7 @@ class DeviceLinkManager(
 
     /**
      * Unlink this device from one application by id (recipient inbox per-app
-     * unlink). No app token needed — the server resolves the device by its push
+     * unlink). no enrolment code needed — the server resolves the device by its push
      * token. Returns success(false) when there's no FCM token or nothing linked.
      */
     suspend fun unlinkApplication(applicationId: Int): Result<Boolean> {
@@ -232,9 +232,9 @@ class DeviceLinkManager(
         }
     }
 
-    private suspend fun forgetAppTokenLocally() = linkMutex.withLock {
-        tokenStorage.setAppToken(null)
-        lastLinkedAppToken = null
+    private suspend fun forgetEnrolmentCodeLocally() = linkMutex.withLock {
+        tokenStorage.setEnrolmentCode(null)
+        lastLinkedEnrolmentCode = null
         lastLinkedFcmToken = null
     }
 
@@ -243,7 +243,7 @@ class DeviceLinkManager(
             AppLogger.info(tag, "Observed FCM token change")
             // Route the cache reset through linkMutex (off the FCM callback thread)
             // so it can't race a concurrent link. The relink itself is driven by
-            // onLink → linkWithAppToken, which re-takes the same lock.
+            // onLink → linkWithEnrolmentCode, which re-takes the same lock.
             scope.launch {
                 linkMutex.withLock { lastLinkedFcmToken = null }
                 onLink(Result.success(false))

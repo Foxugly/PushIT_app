@@ -17,8 +17,8 @@ internal class FakeTokenStore(
     override fun setAccessToken(token: String?) { access = token }
     override fun getRefreshToken() = refresh
     override fun setRefreshToken(token: String?) { refresh = token }
-    override fun getAppToken() = app
-    override fun setAppToken(token: String?) { app = token }
+    override fun getEnrolmentCode() = app
+    override fun setEnrolmentCode(code: String?) { app = code }
     override fun clearAuthTokens() { access = null; refresh = null; cleared = true }
 }
 

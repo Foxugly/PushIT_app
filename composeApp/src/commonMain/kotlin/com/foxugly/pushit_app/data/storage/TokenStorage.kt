@@ -5,8 +5,11 @@ expect class TokenStorage {
     fun setAccessToken(token: String?)
     fun getRefreshToken(): String?
     fun setRefreshToken(token: String?)
-    fun getAppToken(): String?
-    fun setAppToken(token: String?)
+    // Le code d'enrolement scanne (apk_...), ou l'ancien jeton apt_ pour une
+    // install qui n'a pas re-scanne. Il n'ouvre que le rattachement : la capacite
+    // d'emettre vit desormais dans un jeton distinct, qui ne descend jamais ici.
+    fun getEnrolmentCode(): String?
+    fun setEnrolmentCode(code: String?)
     fun clearAuthTokens()
     // UI language preference (lowercase ISO code, e.g. "fr"). Local-only: the
     // mobile API has no language PATCH endpoint, so this is never sent server-side.
