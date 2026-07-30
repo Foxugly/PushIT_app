@@ -29,5 +29,23 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-
+      # Ne soumettre QUE ce qui est reellement livre.
+      #
+      # Sans ce filtre, l'action soumet TOUTES les configurations resolues, y
+      # compris `unified-test-platform-*` (le runner de tests instrumentes
+      # d'AGP), `androidLintTool` et le classpath de build. Resultat le
+      # 2026-07-30 : 45 alertes Dependabot sur ce depot, dont une critique,
+      # alors qu'AUCUN des paquets concernes n'etait dans une configuration
+      # runtime -- verifie un par un via `gradlew :androidApp:dependencies`.
+      # netty venait du runner de tests, bouncycastle de l'outillage de
+      # signature. Rien de tout cela n'entre dans l'APK.
+      #
+      # Ces alertes n'etaient pas davantage corrigeables : monter AGP a la
+      # derniere version (9.1.1 -> 9.3.1) laisse bouncycastle en 1.79.
+      #
+      # Filtrer vaut mieux que rejeter une a une : on ne masque rien, on cesse
+      # simplement de declarer comme livre ce qui ne l'est pas -- et une vraie
+      # vulnerabilite d'une dependance d'application restera visible.
       - uses: gradle/actions/dependency-submission@v6
+        env:
+          DEPENDENCY_GRAPH_INCLUDE_CONFIGURATIONS: ".*[Rr]untimeClasspath"
