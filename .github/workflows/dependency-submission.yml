@@ -1,0 +1,33 @@
+name: Dependency submission
+
+# Le graphe de dependances de GitHub ne sait pas resoudre un projet Gradle
+# tout seul. Sans soumission explicite, le SBOM de ce depot ne contenait que
+# les actions de workflow (actions/checkout, setup-java, setup-gradle) et
+# AUCUNE dependance Kotlin/Android -- donc aucune alerte Dependabot possible
+# sur l'arbre reel. Constate le 2026-07-30 : 4 paquets au SBOM cote
+# PushIT_app, 2 cote trainingmanager_app, alors que gradle/libs.versions.toml
+# en declare des dizaines.
+#
+# Le bloc `gradle` de .github/dependabot.yml couvre les PR de mise a jour,
+# mais PAS les alertes de securite : celles-ci dependent du graphe, qu'il
+# faut alimenter ici.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # requis pour soumettre l'instantane du graphe
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/dependency-submission@v6
