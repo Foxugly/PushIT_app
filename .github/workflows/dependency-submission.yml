@@ -46,6 +46,6 @@ jobs:
       # Filtrer vaut mieux que rejeter une a une : on ne masque rien, on cesse
       # simplement de declarer comme livre ce qui ne l'est pas -- et une vraie
       # vulnerabilite d'une dependance d'application restera visible.
-      - uses: gradle/actions/dependency-submission@v6
+      - uses: gradle/actions/dependency-submission@v6.2.0
         env:
           DEPENDENCY_GRAPH_INCLUDE_CONFIGURATIONS: ".*[Rr]untimeClasspath"
