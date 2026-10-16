@@ -1,9 +1,10 @@
 name: CI
 
-# Runs on push / PR once this repo gets a remote (Foxugly/PushIT_frontend).
-# The unit-test job needs no secrets. The debug-APK job needs the Firebase
-# config provided as a base64 secret (GOOGLE_SERVICES_JSON_B64) because
-# google-services.json is git-ignored.
+# Runs on push / PR. google-services.json is git-ignored: the debug-APK job uses
+# the real file from the GOOGLE_SERVICES_JSON_B64 secret when it is set, otherwise
+# a placeholder (.github/ci/google-services.placeholder.json) — enough to compile,
+# never shipped. (The job used to be gated on HAS_FIREBASE_SECRET, never set, so
+# it was always skipped and nothing compiled the APK.)
 
 on:
   push:
@@ -26,9 +27,6 @@ jobs:
 
   build-debug-apk:
     runs-on: ubuntu-latest
-    # Only runs when the Firebase secret is configured (google-services.json is
-    # git-ignored, so assembleDebug can't run without it).
-    if: ${{ vars.HAS_FIREBASE_SECRET == 'true' }}
     needs: test
     steps:
       - uses: actions/checkout@v7
@@ -37,7 +35,14 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v6
-      - name: Write google-services.json from secret
-        run: echo "${{ secrets.GOOGLE_SERVICES_JSON_B64 }}" | base64 -d > androidApp/google-services.json
+      - name: Provide google-services.json
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON_B64" ]; then
+            echo "$GOOGLE_SERVICES_JSON_B64" | base64 -d > androidApp/google-services.json
+          else
+            cp .github/ci/google-services.placeholder.json androidApp/google-services.json
+          fi
       - name: Assemble debug APK
         run: ./gradlew :androidApp:assembleDebug --no-configuration-cache
