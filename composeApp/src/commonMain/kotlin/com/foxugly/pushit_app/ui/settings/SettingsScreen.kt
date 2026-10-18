@@ -1,13 +1,19 @@
 package com.foxugly.pushit_app.ui.settings
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
+import com.foxugly.pushit_app.data.api.ApiException
 import com.foxugly.pushit_app.data.api.LinkedApplication
 import com.foxugly.pushit_app.data.api.UserProfile
 import com.foxugly.pushit_app.data.repository.AuthRepository
@@ -31,6 +37,9 @@ fun SettingsScreen(
     onNavigateToQrScanner: () -> Unit,
     onLogout: () -> Unit,
     onBack: () -> Unit,
+    // Account deleted server-side: the caller wipes the local session like a logout
+    // (inbox state, navigation). Tokens + enrolment code are already cleared.
+    onAccountDeleted: () -> Unit = onLogout,
     // Called with the new linked-apps list whenever it changes (load / unlink) so
     // the caller can keep the inbox folders in sync — without unlinking, a folder
     // for an app just removed here would linger until the next full refresh.
@@ -44,6 +53,7 @@ fun SettingsScreen(
     var linkedApps by remember { mutableStateOf<List<LinkedApplication>>(emptyList()) }
     var unlinkingAppId by remember { mutableStateOf<Int?>(null) }
     var unlinkError by remember { mutableStateOf<String?>(null) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
 
@@ -81,10 +91,15 @@ fun SettingsScreen(
             )
         },
     ) { paddingValues ->
+        // Scrollable: with several linked apps, a large font or the keyboard open,
+        // Logout / Delete account must stay reachable (they used to be pushed off-screen).
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .consumeWindowInsets(paddingValues)
+                .imePadding()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp),
         ) {
             Spacer(Modifier.height(16.dp))
@@ -225,9 +240,9 @@ fun SettingsScreen(
                 Text(strings.scanQr)
             }
 
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(32.dp))
 
-            // Logout button at bottom
+            // Logout button at the end of the list
             Button(
                 onClick = {
                     scope.launch {
@@ -247,8 +262,7 @@ fun SettingsScreen(
                     contentColor = MaterialTheme.colorScheme.onError,
                 ),
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
+                    .fillMaxWidth(),
             ) {
                 if (isLoggingOut) {
                     CircularProgressIndicator(
@@ -260,8 +274,115 @@ fun SettingsScreen(
                     Text(strings.logout)
                 }
             }
+
+            TextButton(
+                onClick = { showDeleteDialog = true },
+                enabled = !isLoggingOut,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 24.dp),
+            ) {
+                Text(strings.deleteAccount)
+            }
         }
     }
+
+    if (showDeleteDialog) {
+        DeleteAccountDialog(
+            onDismiss = { showDeleteDialog = false },
+            onConfirm = { password ->
+                authRepository.deleteAccount(password).map {
+                    deviceLinkManager.forgetLocalLinkState()
+                }
+            },
+            onDeleted = {
+                showDeleteDialog = false
+                onAccountDeleted()
+            },
+        )
+    }
+}
+
+/**
+ * Confirmation dialog for the irreversible account deletion. The server re-checks
+ * the password; a wrong one keeps the dialog open with an inline error.
+ */
+@Composable
+private fun DeleteAccountDialog(
+    onDismiss: () -> Unit,
+    onConfirm: suspend (password: String) -> Result<Unit>,
+    onDeleted: () -> Unit,
+) {
+    val strings = LocalStrings.current
+    val scope = rememberCoroutineScope()
+    var password by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var isDeleting by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = { if (!isDeleting) onDismiss() },
+        title = { Text(strings.deleteAccountTitle) },
+        text = {
+            Column {
+                Text(strings.deleteAccountMessage, style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it; error = null },
+                    label = { Text(strings.currentPassword) },
+                    singleLine = true,
+                    enabled = !isDeleting,
+                    isError = error != null,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                error?.let {
+                    Spacer(Modifier.height(8.dp))
+                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = !isDeleting,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                onClick = {
+                    if (password.isBlank()) {
+                        error = strings.passwordRequired
+                        return@TextButton
+                    }
+                    scope.launch {
+                        isDeleting = true
+                        error = null
+                        onConfirm(password).fold(
+                            onSuccess = { onDeleted() },
+                            onFailure = { throwable ->
+                                error = if (throwable is ApiException &&
+                                    throwable.errorCode == AuthRepository.ERROR_CURRENT_PASSWORD_INVALID
+                                ) {
+                                    strings.currentPasswordInvalid
+                                } else {
+                                    strings.errorText(throwable, strings.deleteAccountFailed)
+                                }
+                            },
+                        )
+                        isDeleting = false
+                    }
+                },
+            ) {
+                if (isDeleting) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    Text(strings.deleteAccountConfirm)
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isDeleting) { Text(strings.cancel) }
+        },
+    )
 }
 
 @Composable

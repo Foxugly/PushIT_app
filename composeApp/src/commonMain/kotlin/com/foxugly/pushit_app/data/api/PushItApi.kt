@@ -113,6 +113,16 @@ class PushItApi(
         client.get("auth/me/")
     }
 
+    /**
+     * Permanently erase the signed-in account (GDPR art. 17 / store policies).
+     * 204 on success. 400 `current_password_invalid` (wrong password) or
+     * `validation_error` (missing) — see [ApiException.errorCode]. The server also
+     * deletes the user's devices and the applications they own, with their data.
+     */
+    suspend fun deleteAccount(currentPassword: String): Result<Unit> = apiCall {
+        client.delete("auth/me/") { setBody(AccountDeleteRequest(currentPassword)) }
+    }
+
     // --- Device ---
     suspend fun identifyDevice(request: DeviceIdentifyRequest): Result<DeviceIdentifyResponse> = apiCall {
         client.post("devices/identify/") {
@@ -257,6 +267,7 @@ class PushItApi(
             statusCode = status.value,
             operation = operation,
             responseBody = formatApiErrorBody(errorBody),
+            errorCode = extractApiErrorCode(errorBody),
         )
     }
 }
@@ -282,6 +293,13 @@ private suspend inline fun <reified T> HttpResponse.decodeBody(
             cause = cause,
         )
     }
+}
+
+/** The machine-readable `code` of a fleet error body (`{"code": "...", "detail": ...}`), if any. */
+internal fun extractApiErrorCode(rawBody: String): String? {
+    if (rawBody.isBlank()) return null
+    val parsed = runCatching { Json.parseToJsonElement(rawBody) }.getOrNull() as? JsonObject ?: return null
+    return (parsed["code"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
 }
 
 internal fun formatApiErrorBody(rawBody: String): String {
@@ -337,6 +355,8 @@ class ApiException(
     val statusCode: Int,
     operation: String,
     responseBody: String,
+    /** The server's machine-readable error code (e.g. `current_password_invalid`), if any. */
+    val errorCode: String? = null,
 ) : Exception(
     buildString {
         append("API $operation failed with HTTP $statusCode")

@@ -2,6 +2,8 @@ package com.foxugly.pushit_app.ui.login
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,11 +40,30 @@ fun LoginScreen(
     val scope = rememberCoroutineScope()
     val strings = LocalStrings.current
 
-    Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+    // Scrollable + inset-aware: with the keyboard open, a large font or a small
+    // screen, the fields, the button and the credit stay reachable. The column is
+    // at least the viewport tall, so on a roomy screen the form stays centred and
+    // the credit sits at the bottom (SpaceBetween), as before.
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .systemBarsPadding()
+            .imePadding(),
+    ) {
+    val viewportHeight = maxHeight
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .heightIn(min = viewportHeight)
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.SpaceBetween,
+    ) {
+    Spacer(Modifier.height(0.dp))
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Image(
             painter = painterResource(Res.drawable.pushit_logo),
@@ -137,9 +158,9 @@ fun LoginScreen(
         )
     }
 
-        // "by [logo] Foxugly" credit pinned to the bottom.
+        // "by [logo] Foxugly" credit at the bottom.
         Row(
-            modifier = Modifier.align(Alignment.BottomCenter),
+            modifier = Modifier.padding(top = 24.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -162,4 +183,5 @@ fun LoginScreen(
             )
         }
     }
+}
 }

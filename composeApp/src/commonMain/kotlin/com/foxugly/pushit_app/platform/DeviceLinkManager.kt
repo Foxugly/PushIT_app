@@ -264,6 +264,12 @@ class DeviceLinkManager(
         return unlinked
     }
 
+    /**
+     * Forget the enrolment code and the in-memory link cache without calling the
+     * server — after account deletion, when the server already dropped the devices.
+     */
+    suspend fun forgetLocalLinkState() = forgetEnrolmentCodeLocally()
+
     private suspend fun forgetEnrolmentCodeLocally() = linkMutex.withLock {
         tokenStorage.setEnrolmentCode(null)
         lastLinkedEnrolmentCode = null

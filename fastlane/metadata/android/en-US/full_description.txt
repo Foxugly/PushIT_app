@@ -1,0 +1,27 @@
+PushIT is the mobile companion of the PushIT console (pushit.foxugly.com). It receives the push notifications sent by the applications you are linked to and keeps them in a clear, organised inbox.
+
+HOW IT WORKS
+• Sign in with your PushIT account (accounts are created on pushit.foxugly.com).
+• Link an application by scanning its enrolment QR code, or type the code by hand.
+• From then on, every notification that application sends reaches your phone.
+
+YOUR INBOX
+• Unread notifications at a glance, with an unread counter.
+• One folder per linked application, with its logo.
+• Open a notification to read it in full, with its creation and delivery time.
+• Mark as read or unread, delete, mark everything as read, load older messages.
+• Tapping a notification opens the right message directly.
+
+YOU STAY IN CONTROL
+• Unlink an application at any time from Settings: it stops sending to this device.
+• Signing out unlinks the device and clears the local inbox.
+• Delete your account directly in the app (Settings > Delete my account).
+• Interface in French, Dutch and English.
+
+PRIVACY
+• No advertising, no analytics, no tracking.
+• Connections are encrypted (HTTPS only); your session tokens are stored encrypted on the device.
+• The camera is only used to read the QR code, on the device; no image is sent.
+• Privacy policy: https://pushit.foxugly.com/privacy
+
+PushIT is published by Foxugly SRL.

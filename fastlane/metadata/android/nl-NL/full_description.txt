@@ -1,0 +1,27 @@
+PushIT is de mobiele tegenhanger van de PushIT-console (pushit.foxugly.com). De app ontvangt de pushmeldingen van de applicaties waaraan u gekoppeld bent en bewaart ze in een overzichtelijke inbox.
+
+ZO WERKT HET
+• Meld u aan met uw PushIT-account (accounts maakt u aan op pushit.foxugly.com).
+• Koppel een applicatie door haar QR-inschrijvingscode te scannen, of typ de code zelf in.
+• Vanaf dan komt elke melding die deze applicatie verstuurt op uw telefoon terecht.
+
+UW INBOX
+• Ongelezen meldingen in één oogopslag, met een teller.
+• Eén map per gekoppelde applicatie, met haar logo.
+• Open een melding om ze volledig te lezen, met het tijdstip van aanmaak en verzending.
+• Markeren als gelezen of ongelezen, verwijderen, alles als gelezen markeren, oudere berichten laden.
+• Tik op een melding om meteen het juiste bericht te openen.
+
+U HOUDT DE CONTROLE
+• Ontkoppel een applicatie op elk moment via Instellingen: ze stuurt dan niets meer naar dit toestel.
+• Afmelden ontkoppelt het toestel en wist de lokale inbox.
+• Verwijder uw account rechtstreeks in de app (Instellingen > Mijn account verwijderen).
+• Interface in het Frans, Nederlands en Engels.
+
+PRIVACY
+• Geen advertenties, geen statistieken, geen tracking.
+• Versleutelde verbindingen (alleen HTTPS); uw sessietokens worden versleuteld op het toestel bewaard.
+• De camera dient alleen om de QR-code te lezen, op het toestel; er wordt geen beeld verzonden.
+• Privacybeleid: https://pushit.foxugly.com/privacy
+
+PushIT wordt uitgegeven door Foxugly SRL.

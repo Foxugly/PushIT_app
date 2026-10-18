@@ -3,5 +3,9 @@ TEAM_ID=
 PRODUCT_NAME=pushit_app
 PRODUCT_BUNDLE_IDENTIFIER=com.foxugly.pushit_app.pushit_app$(TEAM_ID)
 
+// Build number: must increase on every TestFlight/App Store upload. Override it at
+// build time instead of editing it here: xcodebuild … CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER
+// (or `agvtool new-version -all <n>`). See CLAUDE.md "Versioning".
 CURRENT_PROJECT_VERSION=1
-MARKETING_VERSION=1.0
+// Must equal pushit.versionName in gradle.properties (single source of the version).
+MARKETING_VERSION=1.0.0

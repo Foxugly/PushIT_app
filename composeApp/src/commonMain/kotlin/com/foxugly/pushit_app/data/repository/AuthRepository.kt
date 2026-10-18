@@ -53,6 +53,24 @@ class AuthRepository(
         return result
     }
 
+    /**
+     * Permanently delete the account after re-checking [currentPassword]. On
+     * success the local session is wiped (tokens + enrolment code); the server
+     * already deleted this user's devices, so there is nothing to unlink. On
+     * failure nothing local is touched — check [ApiException.errorCode] for
+     * [ERROR_CURRENT_PASSWORD_INVALID].
+     */
+    suspend fun deleteAccount(currentPassword: String): Result<Unit> {
+        AppLogger.info(tag, "Account deletion requested")
+        return api.deleteAccount(currentPassword).onSuccess {
+            tokenStorage.clearAuthTokens()
+            tokenStorage.setEnrolmentCode(null)
+            AppLogger.info(tag, "Account deleted; local session cleared")
+        }.onFailure {
+            AppLogger.warn(tag, "Account deletion failed: ${it.message}")
+        }
+    }
+
     suspend fun getCurrentUser(): Result<UserProfile> = api.getMe()
 
     fun isAuthenticated(): Boolean = tokenStorage.getAccessToken() != null
@@ -114,5 +132,10 @@ class AuthRepository(
                 }
             }
         )
+    }
+
+    companion object {
+        /** Server error code for a wrong password on `DELETE auth/me/`. */
+        const val ERROR_CURRENT_PASSWORD_INVALID = "current_password_invalid"
     }
 }

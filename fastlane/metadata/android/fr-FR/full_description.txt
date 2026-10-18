@@ -1,0 +1,27 @@
+PushIT est le compagnon mobile de la console PushIT (pushit.foxugly.com). Il reçoit les notifications push envoyées par les applications auxquelles vous êtes lié et les range dans une boîte de réception claire.
+
+COMMENT ÇA MARCHE
+• Connectez-vous avec votre compte PushIT (les comptes se créent sur pushit.foxugly.com).
+• Liez une application en scannant son QR code d'enrôlement, ou saisissez le code à la main.
+• Dès lors, chaque notification envoyée par cette application arrive sur votre téléphone.
+
+VOTRE BOÎTE DE RÉCEPTION
+• Les notifications non lues en un coup d'œil, avec un compteur.
+• Un dossier par application liée, avec son logo.
+• Ouvrez une notification pour la lire en entier, avec ses dates de création et d'envoi.
+• Marquer comme lue ou non lue, supprimer, tout marquer comme lu, charger les messages plus anciens.
+• Toucher une notification ouvre directement le bon message.
+
+VOUS GARDEZ LA MAIN
+• Dissociez une application à tout moment depuis les Réglages : elle n'envoie plus rien à cet appareil.
+• La déconnexion dissocie l'appareil et vide la boîte locale.
+• Supprimez votre compte directement dans l'app (Réglages > Supprimer mon compte).
+• Interface en français, néerlandais et anglais.
+
+VIE PRIVÉE
+• Aucune publicité, aucune statistique d'usage, aucun pistage.
+• Connexions chiffrées (HTTPS uniquement) ; vos jetons de session sont stockés chiffrés sur l'appareil.
+• La caméra ne sert qu'à lire le QR code, sur l'appareil ; aucune image n'est envoyée.
+• Politique de confidentialité : https://pushit.foxugly.com/privacy
+
+PushIT est édité par Foxugly SRL.

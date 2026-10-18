@@ -29,6 +29,11 @@ data class RegisterRequest(
 )
 
 @Serializable
+data class AccountDeleteRequest(
+    @SerialName("current_password") val currentPassword: String,
+)
+
+@Serializable
 data class RefreshRequest(
     val refresh: String,
 )
