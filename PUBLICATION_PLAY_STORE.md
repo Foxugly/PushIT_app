@@ -9,7 +9,7 @@
 
 ## ✅ Déjà fait (rien à refaire)
 - `applicationId = com.foxugly.pushit_app`, `minSdk 24`, `targetSdk 36`,
-  `compileSdk 36` (`androidApp/build.gradle.kts`).
+  `compileSdk 37` (`androidApp/build.gradle.kts`, valeurs dans `gradle/libs.versions.toml`).
 - Build `release` : R8 `isMinifyEnabled = true` + `proguard-rules.pro`
   (keep-rules kotlinx.serialization / Ktor / `PushItFirebaseService`).
 - API **prod épinglée en release** : `https://pushit-api.foxugly.com/api/v1/`
@@ -72,15 +72,21 @@ tag : `git tag v1.0.0 && git push origin v1.0.0`). Le job lance les tests, const
 `androidApp/google-services.json`, puis `.\gradlew.bat :androidApp:bundleRelease`
 → `androidApp/build/outputs/bundle/release/androidApp-release.aab`.
 
-**6. Enregistrer l'empreinte SHA de la clé release dans Firebase** (sinon **FCM
-est cassé sur le build signé** — les notifications n'arriveront pas) :
-```bash
-keytool -list -v -keystore pushit-release.jks -alias pushit
-```
-Copier **SHA-1** et **SHA-256** → console Firebase → Paramètres du projet → ton
-app Android → « Ajouter une empreinte ». (Si tu utilises **Play App Signing**,
-ajoute AUSSI le SHA-1 de la **clé d'app gérée par Google**, visible dans Play
-Console → Configuration → Intégrité de l'app, une fois l'app créée.)
+**6. Empreintes SHA : rien à déclarer dans *Firebase* pour les push.** FCM
+n'utilise **pas** les empreintes enregistrées dans la console Firebase : elles ne
+servent qu'aux services qui authentifient l'app par son certificat (Google
+Sign-In / Firebase Auth, Dynamic Links, App Check avec Play Integrity) — **aucun
+n'est utilisé par PushIT**.
+
+⚠️ En revanche, si la **clé API Android** est restreinte aux apps Android dans
+GCP (recommandé, voir `README.md` → *Securing the Firebase API key*), le SHA-1
+du certificat qui signe l'APK **installé** doit figurer dans cette restriction,
+sinon l'enregistrement FCM échoue en prod. Avec Play App Signing, ce certificat
+est la **clé d'app gérée par Google** (Play Console → Intégrité de l'app), à
+ajouter en plus de la clé d'upload :
+`keytool -list -v -keystore pushit-release.jks -alias pushit` → GCP Console →
+projet `pushit-dcf8a` → APIs & Services → Credentials → clé Android →
+Application restrictions → Android apps.
 
 ### B. Google Play Console
 
@@ -100,15 +106,34 @@ visuels sont **dans le repo**, au format fastlane `supply` :
   dans `fastlane/metadata/android/<locale>/images/phoneScreenshots/` (1.png, 2.png…).
 - Catégorie (*Productivité* ou *Communication*), coordonnées (email).
 
-**9. Politique de confidentialité** : URL **publique** obligatoire (héberge une
-page ; mentionne : tokens FCM, notifications, JWT stocké chiffré, backend
-`pushit-api.foxugly.com`).
+**9. Politique de confidentialité** : URL publique **https://pushit.foxugly.com/privacy**
+(route SPA du frontend). Vérifier qu'elle mentionne : tokens FCM, contenu des
+notifications, JWT stocké chiffré, backend `pushit-api.foxugly.com`, Sentry
+(rapports de crash sans PII), durées de conservation ci-dessous.
 
 **10. Sécurité des données (Data safety)** : déclarer
-- Identifiants/jetons : token FCM (fonctionnement de l'app), JWT en
-  `EncryptedSharedPreferences`.
-- **Chiffré en transit** : oui (HTTPS). **Partage avec des tiers** : non (hors
-  Google/Firebase pour le push). Mécanisme de suppression des données : oui.
+- **Données collectées** : adresse e-mail et identifiant utilisateur (gestion du
+  compte) ; identifiants de l'appareil = token FCM (fonctionnement de l'app :
+  livraison des push) ; contenu des notifications reçues (fonctionnement de
+  l'app) ; journaux de plantage / diagnostics via Sentry (analyse des plantages,
+  **sans PII** : pas d'IP, pas d'utilisateur, pas de jetons). La caméra (scan du
+  QR) est traitée **sur l'appareil** (ML Kit) : aucune image n'est collectée.
+  Aucune publicité, aucune analytics, aucun suivi.
+- **Chiffré en transit** : oui (HTTPS uniquement). **Partage avec des tiers** :
+  non (Google/Firebase et Sentry agissent comme sous-traitants pour le compte de
+  Foxugly, ce que Play ne compte pas comme un partage).
+- **Suppression des données : oui.**
+  - **Dans l'app** : Réglages → *Supprimer mon compte* (mot de passe demandé) →
+    `DELETE /api/v1/auth/me/`. Supprime le compte, ses appareils et les
+    applications qu'il possède, avec leurs notifications et données.
+  - **Sur le web** (exigé par Play : URL de demande de suppression utilisable sans
+    installer l'app) : la console `pushit.foxugly.com` appelle la même route
+    `DELETE /auth/me/`. Renseigner l'URL de la page de suppression de compte de la
+    console une fois publiée (à défaut : une demande par e-mail via la page de
+    contact, traitée par l'admin).
+- **Conservation** : les notifications sont purgées automatiquement après
+  **12 mois** (`RETENTION_NOTIFICATION_DAYS=365` côté serveur, purge quotidienne) ;
+  le reste vit tant que le compte existe et disparaît à sa suppression.
 
 **11. Classification du contenu (IARC)** : remplir le questionnaire (app
 utilitaire → réponses « non » : violence, contenu sexuel, etc.).
@@ -120,9 +145,9 @@ l'app** : le login étant requis, fournir un **compte de test** aux réviseurs.
 
 **13. Piste de test interne d'abord** (Tests → Test interne) : créer une
 release, **uploader l'AAB**, ajouter des testeurs, installer via le lien Play et
-**valider sur un appareil réel** : login + réception d'une notification push
-(important car le build Play-signé utilise la clé d'app de Google → d'où l'étape
-6 pour le SHA).
+**valider sur un appareil réel** : login, scan d'un QR, réception d'une
+notification push (valide aussi la restriction SHA de la clé API, étape 6),
+suppression d'un compte de test.
 
 **14. Promouvoir en Production** : créer la release de production à partir de
 l'AAB validé, notes de version, **déploiement progressif** (ex. 20 %), puis
@@ -133,7 +158,7 @@ envoi en revue. Première revue Google : quelques heures à quelques jours.
 ## Pièges à connaître
 - **Le keystore est irremplaçable** : sa perte empêche toute mise à jour. Sauvegarde-le.
 - **AAB, pas APK** pour une nouvelle app sur le Store.
-- **SHA release dans Firebase** sinon les pushs ne marchent pas sur le build signé.
+- **Clé API restreinte aux apps Android** : y ajouter le SHA-1 de la clé d'app Play (étape 6).
 - `google-services.json` et `keystore.properties` restent **hors git**.
 - `versionCode` doit **strictement augmenter** à chaque upload → n'uploader que les AAB du workflow *Release*.
 
@@ -142,8 +167,6 @@ envoi en revue. Première revue Google : quelques heures à quelques jours.
 # build signé (AAB) : Actions → Release → Run workflow (ou tag v*)
 # local, test uniquement :
 .\gradlew.bat :androidApp:bundleRelease
-# empreintes pour Firebase
-keytool -list -v -keystore pushit-release.jks -alias pushit
 # (debug, pour mémoire) installer sur émulateur
 .\gradlew.bat :androidApp:installDebug
 ```
