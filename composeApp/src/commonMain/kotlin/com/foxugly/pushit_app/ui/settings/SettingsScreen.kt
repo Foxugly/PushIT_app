@@ -1,6 +1,8 @@
 package com.foxugly.pushit_app.ui.settings
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -89,10 +91,15 @@ fun SettingsScreen(
             )
         },
     ) { paddingValues ->
+        // Scrollable: with several linked apps, a large font or the keyboard open,
+        // Logout / Delete account must stay reachable (they used to be pushed off-screen).
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .consumeWindowInsets(paddingValues)
+                .imePadding()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp),
         ) {
             Spacer(Modifier.height(16.dp))
@@ -233,9 +240,9 @@ fun SettingsScreen(
                 Text(strings.scanQr)
             }
 
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(32.dp))
 
-            // Logout button at bottom
+            // Logout button at the end of the list
             Button(
                 onClick = {
                     scope.launch {
