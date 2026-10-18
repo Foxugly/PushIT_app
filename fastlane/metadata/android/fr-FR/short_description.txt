@@ -1,0 +1,1 @@
+Recevez et lisez les notifications push envoyées par les applications suivies.

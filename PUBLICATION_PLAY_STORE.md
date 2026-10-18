@@ -89,10 +89,15 @@ Console → Configuration → Intégrité de l'app, une fois l'app créée.)
 App Signing** (recommandé : Google gère la clé d'app ; tu fournis ta clé
 d'**upload** = le keystore ci-dessus).
 
-**8. Fiche du Store** (Présence sur le Store → Fiche principale) :
-- Icône **512×512** PNG, **feature graphic 1024×500**.
-- **≥ 2 captures d'écran** téléphone (ex. liste des notifs, détail, réglages).
-- Titre, **description courte (80 car.)**, **description complète (4000 car.)**.
+**8. Fiche du Store** (Présence sur le Store → Fiche principale) — les textes et
+visuels sont **dans le repo**, au format fastlane `supply` :
+`fastlane/metadata/android/{fr-FR,nl-NL,en-US}/`
+- `title.txt` (≤ 30 car.), `short_description.txt` (≤ 80), `full_description.txt` (≤ 4000).
+- `images/icon.png` **512×512** et `images/featureGraphic.png` **1024×500** (émeraude `#10b981`),
+  générés depuis les icônes de l'app par `python fastlane/generate_store_assets.py` (Pillow).
+- **TODO — captures d'écran** (≥ 2 téléphone, à faire sur un appareil/émulateur avec un compte de
+  démo) : inbox non lus, dossiers par application, détail d'une notification, réglages. À déposer
+  dans `fastlane/metadata/android/<locale>/images/phoneScreenshots/` (1.png, 2.png…).
 - Catégorie (*Productivité* ou *Communication*), coordonnées (email).
 
 **9. Politique de confidentialité** : URL **publique** obligatoire (héberge une
