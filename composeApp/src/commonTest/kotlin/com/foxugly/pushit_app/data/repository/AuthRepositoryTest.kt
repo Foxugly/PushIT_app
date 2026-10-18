@@ -15,6 +15,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import io.ktor.utils.io.errors.IOException
+import io.ktor.client.engine.mock.toByteArray
+import io.ktor.http.HttpMethod
+import com.foxugly.pushit_app.data.api.ApiException
+import kotlin.test.assertIs
 
 private val jsonHeader = headersOf(HttpHeaders.ContentType, "application/json")
 
@@ -193,6 +197,79 @@ class AuthRepositoryTest {
         val repo = AuthRepository(api(store, engine), store)
 
         assertTrue(repo.tryRefresh(), "being offline must keep the session")
+        assertFalse(store.cleared)
+    }
+
+    @Test
+    fun deleteAccountSendsPasswordAndClearsLocalSession() = runTest {
+        val store = FakeTokenStore(access = "acc", refresh = "ref", app = "apk_x")
+        var method: HttpMethod? = null
+        var path = ""
+        var body = ""
+        val engine = MockEngine { request ->
+            method = request.method
+            path = request.url.encodedPath
+            body = request.body.toByteArray().decodeToString()
+            respond("", HttpStatusCode.NoContent)
+        }
+        val repo = AuthRepository(api(store, engine), store)
+
+        val result = repo.deleteAccount("s3cret")
+
+        assertTrue(result.isSuccess, "${result.exceptionOrNull()}")
+        assertEquals(HttpMethod.Delete, method)
+        assertEquals("/api/v1/auth/me/", path)
+        assertEquals("""{"current_password":"s3cret"}""", body)
+        assertTrue(store.cleared)
+        assertEquals(null, store.getAccessToken())
+        assertEquals(null, store.getRefreshToken())
+        assertEquals(null, store.getEnrolmentCode())
+    }
+
+    @Test
+    fun deleteAccountWrongPasswordExposesCodeAndKeepsSession() = runTest {
+        val store = FakeTokenStore(access = "acc", refresh = "ref", app = "apk_x")
+        val engine = MockEngine {
+            respond(
+                """{"code":"current_password_invalid","detail":"Current password is incorrect."}""",
+                HttpStatusCode.BadRequest, jsonHeader,
+            )
+        }
+        val repo = AuthRepository(api(store, engine), store)
+
+        val error = repo.deleteAccount("wrong").exceptionOrNull()
+
+        val apiError = assertIs<ApiException>(error)
+        assertEquals(400, apiError.statusCode)
+        assertEquals(AuthRepository.ERROR_CURRENT_PASSWORD_INVALID, apiError.errorCode)
+        assertFalse(store.cleared, "a refused deletion must not sign the user out")
+        assertEquals("acc", store.getAccessToken())
+        assertEquals("apk_x", store.getEnrolmentCode())
+    }
+
+    @Test
+    fun deleteAccountValidationErrorKeepsSession() = runTest {
+        val store = FakeTokenStore(access = "acc", refresh = "ref")
+        val engine = MockEngine {
+            respond(
+                """{"code":"validation_error","detail":"Invalid data.","errors":{"current_password":["This field is required."]}}""",
+                HttpStatusCode.BadRequest, jsonHeader,
+            )
+        }
+        val repo = AuthRepository(api(store, engine), store)
+
+        val apiError = assertIs<ApiException>(repo.deleteAccount("").exceptionOrNull())
+        assertEquals("validation_error", apiError.errorCode)
+        assertFalse(store.cleared)
+    }
+
+    @Test
+    fun deleteAccountOfflineKeepsSession() = runTest {
+        val store = FakeTokenStore(access = "acc", refresh = "ref")
+        val engine = MockEngine { throw IOException("offline") }
+        val repo = AuthRepository(api(store, engine), store)
+
+        assertTrue(repo.deleteAccount("pw").isFailure)
         assertFalse(store.cleared)
     }
 }
