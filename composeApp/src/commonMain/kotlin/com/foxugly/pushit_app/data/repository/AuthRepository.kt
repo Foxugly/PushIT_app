@@ -58,7 +58,8 @@ class AuthRepository(
      * success the local session is wiped (tokens + enrolment code); the server
      * already deleted this user's devices, so there is nothing to unlink. On
      * failure nothing local is touched — check [ApiException.errorCode] for
-     * [ERROR_CURRENT_PASSWORD_INVALID].
+     * [ERROR_CURRENT_PASSWORD_INVALID] or
+     * [ERROR_BILLING_UNAVAILABLE].
      */
     suspend fun deleteAccount(currentPassword: String): Result<Unit> {
         AppLogger.info(tag, "Account deletion requested")
@@ -137,5 +138,8 @@ class AuthRepository(
     companion object {
         /** Server error code for a wrong password on `DELETE auth/me/`. */
         const val ERROR_CURRENT_PASSWORD_INVALID = "current_password_invalid"
+
+        /** HTTP 503 on `DELETE auth/me/`: billing could not be reached, so the account was NOT deleted. */
+        const val ERROR_BILLING_UNAVAILABLE = "billing_unavailable"
     }
 }
