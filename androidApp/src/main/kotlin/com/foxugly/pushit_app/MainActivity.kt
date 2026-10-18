@@ -17,13 +17,22 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.foxugly.pushit_app.ui.i18n.AppLanguage
+import com.foxugly.pushit_app.ui.i18n.Strings
+import com.foxugly.pushit_app.ui.i18n.stringsFor
+import java.util.Locale
 import com.foxugly.pushit_app.diagnostics.AppLogger
 import com.foxugly.pushit_app.data.storage.TokenStorage
 import com.foxugly.pushit_app.platform.AppContextHolder
@@ -58,11 +67,19 @@ class MainActivity : ComponentActivity() {
             }
         } catch (throwable: Throwable) {
             AppLogger.error(TAG, "TokenStorage initialization failed", throwable)
+            // The saved language lives in the storage that just failed: use the device's.
+            val strings = stringsFor(AppLanguage.resolve(null, Locale.getDefault().language))
             setContent {
                 FatalStartupScreen(
-                    title = "Startup failed",
+                    strings = strings,
                     details = throwable.message ?: throwable::class.simpleName.orEmpty(),
                     onRetry = { recreate() },
+                    // A corrupted Keystore key / prefs file never heals on retry:
+                    // offer to wipe the local secure storage and start clean.
+                    onResetStorage = {
+                        TokenStorage.resetCorruptedStorage(applicationContext)
+                        recreate()
+                    },
                 )
             }
             return
@@ -163,20 +180,34 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun FatalStartupScreen(
-    title: String,
+    strings: Strings,
     details: String,
     onRetry: () -> Unit,
+    onResetStorage: () -> Unit,
 ) {
     MaterialTheme {
         Column(
-            modifier = Modifier.fillMaxSize().padding(24.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .safeDrawingPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Text(text = title, style = MaterialTheme.typography.headlineSmall)
+            Text(text = strings.startupFailed, style = MaterialTheme.typography.headlineSmall)
             Text(text = details, modifier = Modifier.padding(vertical = 16.dp))
             Button(onClick = onRetry) {
-                Text("Retry")
+                Text(strings.retry)
+            }
+            Text(
+                text = strings.resetLocalStorageHint,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 32.dp, bottom = 8.dp),
+            )
+            OutlinedButton(onClick = onResetStorage) {
+                Text(strings.resetLocalStorage)
             }
         }
     }
