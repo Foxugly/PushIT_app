@@ -64,9 +64,11 @@ fun App(
 
     val session = remember(authRepository) { SessionViewModel(authRepository) }
     var refreshTrigger by remember { mutableStateOf(0) }
-    // UI language: a local preference (persisted in TokenStorage), defaulting to
-    // the fleet default when unset. Changed from Settings.
-    var language by remember { mutableStateOf(AppLanguage.fromCode(tokenStorage.getLanguage())) }
+    // UI language: a local preference (persisted in TokenStorage). When unset, the
+    // device language if supported, else the fleet default. Changed from Settings.
+    var language by remember {
+        mutableStateOf(AppLanguage.resolve(tokenStorage.getLanguage(), deviceLanguageCode()))
+    }
     val strings = stringsFor(language)
     val scope = rememberCoroutineScope()
 
@@ -230,7 +232,10 @@ fun App(
                             tokenStorage.setLanguage(selected.code)
                         },
                         onNavigateToQrScanner = { session.navigateTo(Screen.QrScanner) },
-                        onLogout = { session.resetTo(Screen.Login) },
+                        onLogout = {
+                            inbox.clear()
+                            session.resetTo(Screen.Login)
+                        },
                         onBack = { session.navigateBack() },
                         // Keep inbox folders in sync when an app is unlinked in Settings.
                         onLinkedAppsChanged = { inbox.updateLinkedApps(it) },

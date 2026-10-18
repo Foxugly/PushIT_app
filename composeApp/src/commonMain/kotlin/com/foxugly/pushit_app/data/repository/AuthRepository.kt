@@ -80,6 +80,14 @@ class AuthRepository(
 
     fun hasRefreshToken(): Boolean = tokenStorage.getRefreshToken() != null
 
+    /**
+     * Startup refresh. Returns true when the session is still usable: either the
+     * refresh succeeded, or it failed for a transient reason (offline, timeout,
+     * 5xx) — the tokens are then KEPT, so launching without network doesn't sign
+     * the user out; the request path refreshes again once the server is reachable.
+     * Returns false (tokens cleared) only when the server rejected the refresh
+     * token (401/403).
+     */
     suspend fun tryRefresh(): Boolean {
         val refreshToken = tokenStorage.getRefreshToken() ?: return false
         AppLogger.info(tag, "Trying startup token refresh")
@@ -96,9 +104,14 @@ class AuthRepository(
                 true
             },
             onFailure = {
-                AppLogger.error(tag, "Startup token refresh failed", it)
-                tokenStorage.clearAuthTokens()
-                false
+                if (it is ApiException && isRefreshRejected(it.statusCode)) {
+                    AppLogger.warn(tag, "Startup token refresh rejected (HTTP ${it.statusCode})")
+                    tokenStorage.clearAuthTokens()
+                    false
+                } else {
+                    AppLogger.warn(tag, "Startup token refresh failed transiently; keeping session", it)
+                    true
+                }
             }
         )
     }

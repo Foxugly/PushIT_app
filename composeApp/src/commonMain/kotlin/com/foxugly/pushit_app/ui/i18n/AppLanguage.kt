@@ -17,9 +17,19 @@ enum class AppLanguage(val code: String, val label: String) {
         val DEFAULT = FR
 
         /** Resolve a stored/locale code ("fr", "FR", "fr-BE", null) to a language. */
-        fun fromCode(raw: String?): AppLanguage {
+        fun fromCode(raw: String?): AppLanguage = fromCodeOrNull(raw) ?: DEFAULT
+
+        /** Like [fromCode], but null when the code isn't a supported language. */
+        fun fromCodeOrNull(raw: String?): AppLanguage? {
             val head = raw?.trim()?.lowercase()?.substringBefore('-')?.substringBefore('_')
-            return entries.firstOrNull { it.code == head } ?: DEFAULT
+            return entries.firstOrNull { it.code == head }
         }
+
+        /**
+         * Startup language: the user's saved choice, else the device language when
+         * the app is translated into it, else [DEFAULT].
+         */
+        fun resolve(stored: String?, deviceLanguage: String?): AppLanguage =
+            fromCodeOrNull(stored) ?: fromCodeOrNull(deviceLanguage) ?: DEFAULT
     }
 }

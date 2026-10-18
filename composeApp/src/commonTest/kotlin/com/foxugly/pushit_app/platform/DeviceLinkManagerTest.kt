@@ -20,6 +20,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import io.ktor.utils.io.errors.IOException
+import io.ktor.client.engine.mock.toByteArray
 
 private val jsonHeader = headersOf(HttpHeaders.ContentType, "application/json")
 
@@ -225,5 +227,43 @@ class DeviceLinkManagerTest {
         }
 
         assertEquals(1, links.size, "concurrent identical links must dedup to a single /devices/link/")
+    }
+
+    @Test
+    fun deregisterForLogoutUnlinksEveryLinkedAppAndForgetsCode() = runTest {
+        val unlinkedIds = mutableListOf<String>()
+        val engine = MockEngine { request ->
+            when {
+                request.url.encodedPath.endsWith("/devices/identify/") ->
+                    respond(IDENTIFY_OK, HttpStatusCode.OK, jsonHeader)
+                request.url.encodedPath.endsWith("/devices/unlink-app/") -> {
+                    unlinkedIds += String(request.body.toByteArray())
+                    respond(
+                        """{"status":"ok","device_id":1,"application_id":2,"unlinked":true}""",
+                        HttpStatusCode.OK, jsonHeader,
+                    )
+                }
+                else -> respond("", HttpStatusCode.NotFound)
+            }
+        }
+        val store = FakeTokenStore(access = "a", app = "code")
+
+        val count = manager(store, FakeFcmTokenSource("fcm-token-0123456789"), engine).deregisterForLogout()
+
+        assertEquals(1, count)
+        assertEquals(1, unlinkedIds.size)
+        assertTrue(unlinkedIds.single().contains("\"application_id\":2"), unlinkedIds.single())
+        assertNull(store.getEnrolmentCode(), "enrolment code must be forgotten on logout")
+    }
+
+    @Test
+    fun deregisterForLogoutStillClearsLocallyWhenOffline() = runTest {
+        val engine = MockEngine { throw IOException("offline") }
+        val store = FakeTokenStore(access = "a", app = "code")
+
+        val count = manager(store, FakeFcmTokenSource("fcm"), engine).deregisterForLogout()
+
+        assertEquals(0, count)
+        assertNull(store.getEnrolmentCode())
     }
 }

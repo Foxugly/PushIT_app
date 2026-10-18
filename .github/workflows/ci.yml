@@ -46,3 +46,7 @@ jobs:
           fi
       - name: Assemble debug APK
         run: ./gradlew :androidApp:assembleDebug --no-configuration-cache
+      # Release build too (unsigned when no keystore is configured), so an R8 /
+      # keep-rules regression fails CI instead of surfacing only at publish time.
+      - name: Assemble release APK (unsigned, R8)
+        run: ./gradlew :androidApp:assembleRelease --no-configuration-cache

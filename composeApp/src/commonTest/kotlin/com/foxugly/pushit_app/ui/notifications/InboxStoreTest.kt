@@ -15,6 +15,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlin.test.assertNull
+import kotlin.test.assertFalse
 
 private val jsonHeader = headersOf(HttpHeaders.ContentType, "application/json")
 
@@ -78,5 +80,26 @@ class InboxStoreTest {
 
         assertEquals(1, inbox.notifications.count { it.id == 5 }, "no duplicate after merge")
         assertEquals("New", inbox.find(5)?.applicationName, "server copy wins on conflict")
+    }
+
+    @Test
+    fun clearForgetsMessagesAndPersistedState() = runTest {
+        val engine = MockEngine { request ->
+            if (request.url.encodedPath.endsWith("/notifications/device/"))
+                respond("[${notification(1)}]", HttpStatusCode.OK, jsonHeader)
+            else respond("[]", HttpStatusCode.OK, jsonHeader)
+        }
+        val state = FakeInboxStateStore()
+        val api = PushItApi(FakeTokenStore(access = "a"), baseUrl = "https://test/api/v1/", engine = engine)
+        val inbox = InboxStore(NotificationRepository(api), state, FakeFcmTokenSource("fcm"))
+        inbox.refresh()
+        inbox.markRead(1)
+        assertTrue(inbox.isRead(1))
+
+        inbox.clear()
+
+        assertTrue(inbox.notifications.isEmpty())
+        assertFalse(inbox.isRead(1))
+        assertNull(state.getNotificationState())
     }
 }

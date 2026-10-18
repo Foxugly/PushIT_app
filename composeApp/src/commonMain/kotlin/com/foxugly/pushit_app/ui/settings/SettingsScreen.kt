@@ -232,6 +232,10 @@ fun SettingsScreen(
                 onClick = {
                     scope.launch {
                         isLoggingOut = true
+                        // Unlink the device first (needs the still-valid access token),
+                        // then revoke the session. Both are best effort: offline, the
+                        // user is still signed out locally.
+                        deviceLinkManager.deregisterForLogout()
                         authRepository.logout()
                         isLoggingOut = false
                         onLogout()
