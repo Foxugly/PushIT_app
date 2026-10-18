@@ -36,31 +36,41 @@ keytool -genkeypair -v -keystore pushit-release.jks -alias pushit \
 Stocke `pushit-release.jks` **hors du repo** (gestionnaire de secrets / coffre).
 **Ne jamais committer** le keystore ni les mots de passe.
 
-**2. Créer `keystore.properties`** à la racine du repo (déjà git-ignored) :
-```properties
-RELEASE_STORE_FILE=/chemin/absolu/pushit-release.jks
-RELEASE_STORE_PASSWORD=********
-RELEASE_KEY_ALIAS=pushit
-RELEASE_KEY_PASSWORD=********
-```
-(ou les variables d'env équivalentes `RELEASE_STORE_FILE`, etc.)
+**2. Créer les secrets GitHub du dépôt** (`Foxugly/PushIT_app` → Settings →
+Secrets and variables → Actions → *New repository secret*). Le workflow
+`.github/workflows/release.yml` s'arrête dès le départ, en listant ceux qui
+manquent :
 
-**3. Placer `google-services.json`** dans `androidApp/` (téléchargé depuis la
-console Firebase du projet PushIT ; déjà git-ignored). Sans lui, le build
-release échoue / FCM ne s'initialise pas.
+| Secret | Contenu |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | le keystore d'upload encodé : `base64 -w0 pushit-release.jks` (PowerShell : `[Convert]::ToBase64String([IO.File]::ReadAllBytes("pushit-release.jks"))`) |
+| `ANDROID_KEYSTORE_PASSWORD` | mot de passe du keystore |
+| `ANDROID_KEY_ALIAS` | alias de la clé (ex. `pushit`) |
+| `ANDROID_KEY_PASSWORD` | mot de passe de la clé |
+| `GOOGLE_SERVICES_JSON` | le vrai `google-services.json` du projet Firebase PushIT (JSON brut ou base64) |
+| `PUSHIT_SENTRY_DSN` | DSN du projet Sentry `pushit-app` (org `foxugly-srl`, région `de.sentry.io`) — à créer d'abord |
 
-**4. Bumper la version** dans `androidApp/build.gradle.kts` :
-- `versionCode = 1` → **incrémenter à chaque upload** (ex. `1`).
-- `versionName = "1.0"` → libellé visible (ex. `"1.0.0"`).
+(Le secret `GOOGLE_SERVICES_JSON_B64` du workflow CI est distinct et optionnel : sans lui la CI compile
+avec un placeholder. La release, elle, **refuse** le placeholder.)
 
-**5. Construire l'App Bundle (AAB)** — le Play Store **exige un AAB**, pas un APK :
-```bash
-.\gradlew.bat :androidApp:bundleRelease
-```
-Sortie : `androidApp/build/outputs/bundle/release/androidApp-release.aab`.
-(La tâche `bundleRelease` est fournie automatiquement par l'Android Gradle
-Plugin pour un module application — vérifier qu'elle existe :
-`.\gradlew.bat :androidApp:tasks | findstr bundle`.)
+**3. Version** : `pushit.versionName` dans `gradle.properties` (source unique) — à
+bumper avant une release. Le `versionCode` n'est **plus écrit à la main** : en
+release c'est le numéro de run du workflow (`GITHUB_RUN_NUMBER`), qui augmente à
+chaque exécution. **N'uploader sur Play que des AAB produits par ce workflow** : un
+build local prend le nombre de commits comme `versionCode` et pourrait passer
+devant le compteur CI (sinon, forcer `PUSHIT_VERSION_CODE`). Détail : `CLAUDE.md` → *Versioning*.
+
+**4. Lancer le build signé** : Actions → *Release* → *Run workflow* (ou pousser un
+tag : `git tag v1.0.0 && git push origin v1.0.0`). Le job lance les tests, construit
+`:androidApp:bundleRelease` signé, vérifie la signature (`jarsigner`) et publie en
+**artifact** `pushit-<versionName>-<run>` : `androidApp-release.aab` + `mapping.txt`
+(à garder pour désobfusquer les stack traces). **Aucun upload Play automatique.**
+
+**5. (Alternative locale)** — build signé sur le PC, pour un test uniquement :
+`keystore.properties` à la racine (git-ignored) avec `RELEASE_STORE_FILE`,
+`RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`, le vrai
+`androidApp/google-services.json`, puis `.\gradlew.bat :androidApp:bundleRelease`
+→ `androidApp/build/outputs/bundle/release/androidApp-release.aab`.
 
 **6. Enregistrer l'empreinte SHA de la clé release dans Firebase** (sinon **FCM
 est cassé sur le build signé** — les notifications n'arriveront pas) :
@@ -120,11 +130,12 @@ envoi en revue. Première revue Google : quelques heures à quelques jours.
 - **AAB, pas APK** pour une nouvelle app sur le Store.
 - **SHA release dans Firebase** sinon les pushs ne marchent pas sur le build signé.
 - `google-services.json` et `keystore.properties` restent **hors git**.
-- `versionCode` doit **strictement augmenter** à chaque upload.
+- `versionCode` doit **strictement augmenter** à chaque upload → n'uploader que les AAB du workflow *Release*.
 
 ## Commandes récap
 ```bash
-# build signé (AAB)
+# build signé (AAB) : Actions → Release → Run workflow (ou tag v*)
+# local, test uniquement :
 .\gradlew.bat :androidApp:bundleRelease
 # empreintes pour Firebase
 keytool -list -v -keystore pushit-release.jks -alias pushit

@@ -1,0 +1,123 @@
+name: Release
+
+# Builds the SIGNED Android App Bundle (AAB) for the Play Store and uploads it as
+# a workflow artifact. Nothing is pushed to Play: the operator downloads the AAB
+# and uploads it in Play Console (internal track first, see PUBLICATION_PLAY_STORE.md).
+#
+# Triggers: manual run (Actions > Release > Run workflow) or a pushed tag `v*`
+# (e.g. `git tag v1.0.0 && git push origin v1.0.0`).
+#
+# versionCode = this workflow's run number (GITHUB_RUN_NUMBER, see
+# androidApp/build.gradle.kts), versionName = pushit.versionName in gradle.properties.
+#
+# Required repository secrets (the job fails up front, listing the missing ones):
+#   ANDROID_KEYSTORE_BASE64    upload keystore (.jks), base64-encoded (`base64 -w0 pushit-release.jks`)
+#   ANDROID_KEYSTORE_PASSWORD  keystore password
+#   ANDROID_KEY_ALIAS          key alias (e.g. pushit)
+#   ANDROID_KEY_PASSWORD       key password
+#   GOOGLE_SERVICES_JSON       the real androidApp/google-services.json (raw JSON or base64)
+#   PUSHIT_SENTRY_DSN          DSN of the Sentry project pushit-app (org foxugly-srl, de.sentry.io)
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required secrets
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+          PUSHIT_SENTRY_DSN: ${{ secrets.PUSHIT_SENTRY_DSN }}
+        run: |
+          missing=""
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS \
+                      ANDROID_KEY_PASSWORD GOOGLE_SERVICES_JSON PUSHIT_SENTRY_DSN; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error title=Missing release secrets::Create these repository secrets:$missing — see PUBLICATION_PLAY_STORE.md"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Provide google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if printf '%s' "$GOOGLE_SERVICES_JSON" | head -c 1 | grep -q '{'; then
+            printf '%s' "$GOOGLE_SERVICES_JSON" > androidApp/google-services.json
+          else
+            printf '%s' "$GOOGLE_SERVICES_JSON" | base64 -d > androidApp/google-services.json
+          fi
+          # Refuse the CI placeholder: a release must talk to the real Firebase project.
+          if grep -q '"project_id": *"ci-placeholder"' androidApp/google-services.json 2>/dev/null; then
+            echo "::error::GOOGLE_SERVICES_JSON is the CI placeholder, not the real Firebase config"
+            exit 1
+          fi
+          python3 -m json.tool androidApp/google-services.json > /dev/null
+
+      - name: Decode upload keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          echo "RELEASE_STORE_FILE=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+
+      - name: Host unit tests
+        run: ./gradlew :composeApp:testAndroidHostTest --no-configuration-cache
+
+      - name: Build signed AAB
+        env:
+          RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          PUSHIT_SENTRY_DSN: ${{ secrets.PUSHIT_SENTRY_DSN }}
+        run: ./gradlew :androidApp:bundleRelease --no-configuration-cache
+
+      - name: Verify signature
+        run: |
+          aab=androidApp/build/outputs/bundle/release/androidApp-release.aab
+          test -f "$aab"
+          jarsigner -verify "$aab" | tee "$RUNNER_TEMP/verify.txt"
+          grep -q "jar verified" "$RUNNER_TEMP/verify.txt"
+          version_name=$(grep '^pushit.versionName=' gradle.properties | cut -d= -f2)
+          echo "AAB_NAME=pushit-${version_name}-${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+          {
+            echo "### PushIT release AAB"
+            echo "- versionName: \`${version_name}\`"
+            echo "- versionCode: \`${GITHUB_RUN_NUMBER}\`"
+            echo "- ref: \`${GITHUB_REF_NAME}\` @ \`${GITHUB_SHA::7}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.AAB_NAME }}
+          path: |
+            androidApp/build/outputs/bundle/release/androidApp-release.aab
+            androidApp/build/outputs/mapping/release/mapping.txt
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Remove secrets from the runner
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks" androidApp/google-services.json

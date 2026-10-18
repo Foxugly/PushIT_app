@@ -111,6 +111,17 @@ Android only, via `io.sentry:sentry-android-core`, initialised in `androidApp/..
 - iOS: no crash reporting yet (sentry-kotlin-multiplatform needs the Cocoa SDK wired into the Xcode
   project, which does not build from Windows — see the iOS blockers in `BACKLOG.md`).
 
+## Release pipeline
+
+`.github/workflows/release.yml` (manual `workflow_dispatch` or tag `v*`) runs the host tests, builds
+the **signed AAB** (`:androidApp:bundleRelease`), verifies it with `jarsigner` and uploads it (+
+`mapping.txt`) as a workflow artifact. **No Play upload** — the operator uploads it in Play Console.
+It fails up front, listing what is missing, unless these **repository secrets** exist:
+`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`,
+`GOOGLE_SERVICES_JSON` (raw or base64; the CI placeholder is refused), `PUSHIT_SENTRY_DSN`.
+Signing reads `RELEASE_STORE_FILE` / `RELEASE_*` env vars (same names as `keystore.properties`).
+Operator checklist: `PUBLICATION_PLAY_STORE.md`.
+
 ## Versioning
 
 - **versionName** (Android) / **MARKETING_VERSION** (iOS): single source = `pushit.versionName` in
