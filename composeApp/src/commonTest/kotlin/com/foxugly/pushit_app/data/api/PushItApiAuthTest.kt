@@ -12,6 +12,10 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.test.assertFalse
+import kotlin.test.assertIs
+import kotlin.test.assertNull
+import io.ktor.utils.io.errors.IOException
 
 private val jsonHeader = headersOf(HttpHeaders.ContentType, "application/json")
 
@@ -100,5 +104,94 @@ class PushItApiAuthTest {
         assertTrue(authFailed, "onAuthFailure must fire when refresh fails")
         assertTrue(store.cleared, "tokens must be cleared on refresh failure")
         api.close()
+    }
+
+    @Test
+    fun keepsTokensWhenRefreshHitsServerError() = runTest {
+        val store = FakeTokenStore(access = "stale", refresh = "r")
+        var authFailed = false
+        val engine = MockEngine { request ->
+            if (request.url.encodedPath.endsWith("/auth/refresh/")) respond("", HttpStatusCode.ServiceUnavailable)
+            else respond("", HttpStatusCode.Unauthorized)
+        }
+        val api = PushItApi(store, baseUrl = "https://test/api/v1/", engine = engine)
+        api.onAuthFailure = { authFailed = true }
+
+        val result = api.getMe()
+
+        assertTrue(result.isFailure)
+        assertEquals(503, (result.exceptionOrNull() as? ApiException)?.statusCode)
+        assertFalse(store.cleared, "a 5xx on refresh must not sign the user out")
+        assertFalse(authFailed)
+        assertEquals("r", store.getRefreshToken())
+        api.close()
+    }
+
+    @Test
+    fun keepsTokensWhenRefreshCannotReachServer() = runTest {
+        val store = FakeTokenStore(access = "stale", refresh = "r")
+        var authFailed = false
+        val engine = MockEngine { request ->
+            if (request.url.encodedPath.endsWith("/auth/refresh/")) throw IOException("offline")
+            respond("", HttpStatusCode.Unauthorized)
+        }
+        val api = PushItApi(store, baseUrl = "https://test/api/v1/", engine = engine)
+        api.onAuthFailure = { authFailed = true }
+
+        val result = api.getMe()
+
+        assertIs<NetworkException>(result.exceptionOrNull())
+        assertFalse(store.cleared, "being offline must not sign the user out")
+        assertFalse(authFailed)
+        api.close()
+    }
+
+    @Test
+    fun clearsTokensWhenRefreshIsForbidden() = runTest {
+        val store = FakeTokenStore(access = "stale", refresh = "r")
+        val engine = MockEngine { request ->
+            if (request.url.encodedPath.endsWith("/auth/refresh/")) respond("", HttpStatusCode.Forbidden)
+            else respond("", HttpStatusCode.Unauthorized)
+        }
+        val api = PushItApi(store, baseUrl = "https://test/api/v1/", engine = engine)
+
+        assertTrue(api.getMe().isFailure)
+        assertTrue(store.cleared)
+        api.close()
+    }
+
+    @Test
+    fun bearerOnlySentToApiHost() = runTest {
+        val store = FakeTokenStore(access = "tok", refresh = "r")
+        val authByHost = mutableMapOf<String, String?>()
+        val engine = MockEngine { request ->
+            authByHost[request.url.host] = request.headers[HttpHeaders.Authorization]
+            respond(byteArrayOf(1, 2, 3), HttpStatusCode.OK)
+        }
+        val api = PushItApi(store, baseUrl = "https://test/api/v1/", engine = engine)
+
+        assertTrue(api.getImageBytes("https://test/media/logo.png").isSuccess)
+        assertTrue(api.getImageBytes("https://elsewhere.example/logo.png").isSuccess)
+
+        assertEquals("Bearer tok", authByHost["test"])
+        assertNull(authByHost["elsewhere.example"], "token must not leak to another host")
+        api.close()
+    }
+
+    @Test
+    fun decodeErrorOmitsResponseBodyUnlessDebug() = runTest {
+        val body = """{"unexpected":"secret-jwt-value"}"""
+        val engine = MockEngine { respond(body, HttpStatusCode.OK, jsonHeader) }
+
+        val release = PushItApi(FakeTokenStore(), baseUrl = "https://test/api/v1/", engine = engine)
+        val releaseError = release.login(LoginRequest("a@b.test", "pw")).exceptionOrNull()
+        assertIs<ResponseDecodingException>(releaseError)
+        assertFalse(releaseError.message.orEmpty().contains("secret-jwt-value"))
+        release.close()
+
+        val debug = PushItApi(FakeTokenStore(), baseUrl = "https://test/api/v1/", enableLogging = true, engine = engine)
+        val debugError = debug.login(LoginRequest("a@b.test", "pw")).exceptionOrNull()
+        assertTrue(debugError?.message.orEmpty().contains("secret-jwt-value"))
+        debug.close()
     }
 }

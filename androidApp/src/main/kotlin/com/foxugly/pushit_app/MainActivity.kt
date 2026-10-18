@@ -44,9 +44,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         AppLogger.info(TAG, "MainActivity.onCreate started")
-        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            AppLogger.error(TAG, "Uncaught exception on ${thread.name}", throwable)
-        }
+        installCrashLogger()
 
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -130,6 +128,33 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "PushIT/MainActivity"
+
+        @Volatile
+        private var crashLoggerInstalled = false
+
+        /**
+         * Log uncaught exceptions, then hand them to the previous default handler
+         * (the platform's), so the process still dies and Play Vitals records the
+         * crash. Swallowing them froze the app (dead main thread, then an ANR)
+         * and hid the crash. Installed once per process: onCreate runs again on
+         * every recreate(), and re-wrapping would chain our handler onto itself.
+         */
+        @Synchronized
+        private fun installCrashLogger() {
+            if (crashLoggerInstalled) return
+            val previous = Thread.getDefaultUncaughtExceptionHandler()
+            Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+                runCatching { AppLogger.error(TAG, "Uncaught exception on ${thread.name}", throwable) }
+                if (previous != null) {
+                    previous.uncaughtException(thread, throwable)
+                } else {
+                    // No platform handler (never expected on Android): die anyway.
+                    android.os.Process.killProcess(android.os.Process.myPid())
+                    kotlin.system.exitProcess(10)
+                }
+            }
+            crashLoggerInstalled = true
+        }
         // Both release and debug builds talk to prod; debug only adds HTTP logging.
         private const val PROD_API_BASE_URL = "https://pushit-api.foxugly.com/api/v1/"
     }

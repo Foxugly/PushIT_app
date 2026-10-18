@@ -7,3 +7,6 @@ interface Platform {
 }
 
 expect fun getPlatform(): Platform
+
+/** The device's preferred UI language as an ISO code ("fr", "nl-BE"…), or null. */
+expect fun deviceLanguageCode(): String?

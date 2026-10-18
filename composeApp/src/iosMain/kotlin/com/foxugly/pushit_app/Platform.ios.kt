@@ -9,3 +9,6 @@ class IOSPlatform : Platform {
 }
 
 actual fun getPlatform(): Platform = IOSPlatform()
+
+actual fun deviceLanguageCode(): String? =
+    platform.Foundation.NSLocale.preferredLanguages.firstOrNull() as? String

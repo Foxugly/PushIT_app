@@ -14,6 +14,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import io.ktor.utils.io.errors.IOException
 
 private val jsonHeader = headersOf(HttpHeaders.ContentType, "application/json")
 
@@ -172,5 +173,26 @@ class AuthRepositoryTest {
 
         assertFalse(repo.tryRefresh())
         assertFalse(hit, "no refresh token → no network call")
+    }
+
+    @Test
+    fun tryRefreshKeepsSessionOnServerError() = runTest {
+        val store = FakeTokenStore(access = "old", refresh = "ref")
+        val engine = MockEngine { respond("", HttpStatusCode.ServiceUnavailable) }
+        val repo = AuthRepository(api(store, engine), store)
+
+        assertTrue(repo.tryRefresh(), "a 5xx must keep the session")
+        assertFalse(store.cleared)
+        assertEquals("ref", store.getRefreshToken())
+    }
+
+    @Test
+    fun tryRefreshKeepsSessionWhenOffline() = runTest {
+        val store = FakeTokenStore(access = "old", refresh = "ref")
+        val engine = MockEngine { throw IOException("offline") }
+        val repo = AuthRepository(api(store, engine), store)
+
+        assertTrue(repo.tryRefresh(), "being offline must keep the session")
+        assertFalse(store.cleared)
     }
 }

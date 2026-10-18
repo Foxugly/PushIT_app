@@ -12,6 +12,7 @@ import com.foxugly.pushit_app.data.storage.TokenStore
 import com.foxugly.pushit_app.diagnostics.AppLogger
 import com.foxugly.pushit_app.getPlatform
 import kotlin.concurrent.Volatile
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -230,6 +231,37 @@ class DeviceLinkManager(
         }.onFailure {
             AppLogger.error(tag, "Unlink app $applicationId failed: ${it.message}", it)
         }
+    }
+
+    /**
+     * Logout step, run while the access token is still valid: unlink this device
+     * from every application it is linked to, so pushes stop reaching a signed-out
+     * (possibly shared or resold) device, then forget the enrolment code locally.
+     * Best effort: offline or on a server error the local state is cleared anyway
+     * and the logout goes on. Returns how many apps were unlinked server-side.
+     */
+    suspend fun deregisterForLogout(): Int {
+        var unlinked = 0
+        try {
+            val fcmToken = fcmTokenProvider.getCurrentToken()
+            if (fcmToken == null || tokenStorage.getAccessToken() == null) {
+                AppLogger.info(tag, "Logout deregistration skipped: no FCM or access token")
+            } else {
+                val linked = identify().getOrNull()?.linkedApplications.orEmpty()
+                for (app in linked) {
+                    api.unlinkDeviceApp(
+                        DeviceUnlinkByApplicationRequest(pushToken = fcmToken, applicationId = app.id)
+                    ).onSuccess { if (it.unlinked) unlinked++ }
+                }
+                AppLogger.info(tag, "Logout deregistration: $unlinked/${linked.size} app(s) unlinked")
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AppLogger.warn(tag, "Logout deregistration failed; clearing locally", e)
+        }
+        forgetEnrolmentCodeLocally()
+        return unlinked
     }
 
     private suspend fun forgetEnrolmentCodeLocally() = linkMutex.withLock {

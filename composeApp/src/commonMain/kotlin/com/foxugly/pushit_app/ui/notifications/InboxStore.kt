@@ -256,6 +256,18 @@ class InboxStore(
         persist()
     }
 
+    /** Logout: forget this account's messages and local read/dismissed state
+     * (in memory and persisted), so the next account starts from a clean inbox. */
+    fun clear() {
+        notifications = emptyList()
+        linkedApps = emptyList()
+        readIds = emptySet()
+        dismissedIds = emptySet()
+        allLoaded = false
+        logoCache.clear()
+        storage.setNotificationState(null)
+    }
+
     private fun persist() {
         // Prune to known ids so stored state can't grow unbounded — but ONLY when
         // the full history is loaded. On the recent window, older ids are absent,

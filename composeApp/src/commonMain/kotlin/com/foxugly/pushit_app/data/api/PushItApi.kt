@@ -40,7 +40,11 @@ class PushItApi(
         explicitNulls = false
     }
 
-    private val authInterceptor = AuthInterceptor(tokenStorage, json)
+    private val authInterceptor = AuthInterceptor(tokenStorage, json, Url(baseUrl))
+
+    // Raw response bodies only go into exceptions (and so into logcat) in debug
+    // builds: a mis-shaped auth response could otherwise leak JWTs to the log.
+    private val includeRawBodies = enableLogging
 
     private val clientConfig: HttpClientConfig<*>.() -> Unit = {
         install(ContentNegotiation) {
@@ -218,12 +222,12 @@ class PushItApi(
             if (!retried.status.isSuccess()) {
                 throw retried.toApiException("retry $name")
             }
-            retried.decodeBody<T>(name, json)
+            retried.decodeBody<T>(name, json, includeRawBodies)
         } else {
             if (!response.status.isSuccess()) {
                 throw response.toApiException(name)
             }
-            response.decodeBody<T>(name, json)
+            response.decodeBody<T>(name, json, includeRawBodies)
         }
     }.recoverCatching { throwable ->
         // Surface transport failures as NetworkException so the UI can tell
@@ -257,7 +261,11 @@ class PushItApi(
     }
 }
 
-private suspend inline fun <reified T> HttpResponse.decodeBody(operation: String, json: Json): T {
+private suspend inline fun <reified T> HttpResponse.decodeBody(
+    operation: String,
+    json: Json,
+    includeRawBody: Boolean,
+): T {
     val rawBody = bodyAsText()
     // A 204 / empty body for a Unit-returning call is success, not a decode error.
     if (rawBody.isBlank() && T::class == Unit::class) {
@@ -270,7 +278,7 @@ private suspend inline fun <reified T> HttpResponse.decodeBody(operation: String
         throw ResponseDecodingException(
             operation = operation,
             statusCode = status.value,
-            responseBody = rawBody.take(500),
+            responseBody = if (includeRawBody) rawBody.take(500) else "",
             cause = cause,
         )
     }

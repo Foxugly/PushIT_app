@@ -70,7 +70,7 @@ State-driven manual navigation in `App.kt` using `sealed class Screen` + `when`.
 
 ### Auth Flow
 
-`AuthInterceptor` (Ktor client plugin) attaches `Bearer` token to all requests except `/auth/*`. On 401, `apiCall` calls `AuthInterceptor.refreshIfNeeded()` (single refresh under `refreshMutex`, with a guard that skips re-refreshing when a concurrent call already rotated the token) and then **replays the original request lambda** — preserving the verb and body, with the fresh token re-attached. If refresh fails, `onAuthFailure` navigates to Login. Transport failures (timeout/offline) surface as `NetworkException`, distinct from HTTP `ApiException`.
+`AuthInterceptor` (Ktor client plugin) attaches `Bearer` token to requests for the API host only (never another origin), except `/auth/*`. On 401, `apiCall` calls `AuthInterceptor.refreshIfNeeded()` (single refresh under `refreshMutex`, with a guard that skips re-refreshing when a concurrent call already rotated the token) and then **replays the original request lambda** — preserving the verb and body, with the fresh token re-attached. If the server rejects the refresh token (401/403), tokens are cleared and `onAuthFailure` navigates to Login; a transport error or 5xx on refresh keeps the session (offline must not sign out). Logout unlinks the device from its apps (`devices/unlink-app/`, best effort) before revoking the refresh token. Transport failures (timeout/offline) surface as `NetworkException`, distinct from HTTP `ApiException`.
 
 ### Startup Flow (in App.kt)
 

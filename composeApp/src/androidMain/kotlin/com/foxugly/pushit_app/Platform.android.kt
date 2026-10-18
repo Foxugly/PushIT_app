@@ -9,3 +9,6 @@ class AndroidPlatform : Platform {
 }
 
 actual fun getPlatform(): Platform = AndroidPlatform()
+
+actual fun deviceLanguageCode(): String? =
+    java.util.Locale.getDefault().language.takeIf { it.isNotBlank() }
