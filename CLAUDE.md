@@ -95,6 +95,22 @@ All API calls return `Result<T>` via a shared `apiCall` helper.
 - **multiplatform-settings** — cross-platform key-value storage (Android uses `EncryptedSharedPreferences`, iOS uses `NSUserDefaults`)
 - **Compose Multiplatform 1.10.3** / **Kotlin 2.3.10**
 
+## Crash reporting (Sentry)
+
+Android only, via `io.sentry:sentry-android-core`, initialised in `androidApp/.../PushItApplication.kt`
+(before `MainActivity.installCrashLogger()`, so the chain is our logger → Sentry → platform handler).
+
+- **DSN source:** Gradle property `-PPUSHIT_SENTRY_DSN=…` or env var `PUSHIT_SENTRY_DSN` → `BuildConfig.SENTRY_DSN`.
+  In CI it comes from the **repo secret `PUSHIT_SENTRY_DSN`** (release workflow). Empty ⇒ Sentry is **not
+  initialised** (local, PR and debug builds without the variable). Never commit the DSN.
+- **Sentry project to create (once, by an admin):** `pushit-app`, org **`foxugly-srl`**, region
+  **`de.sentry.io`**, platform Android. Its DSN goes into the GitHub secret above.
+- Privacy: `sendDefaultPii=false`, no screenshots / view hierarchy / tap breadcrumbs, `beforeSend` drops
+  user + request, `beforeBreadcrumb` drops HTTP breadcrumbs and anything that looks like a JWT, Bearer
+  header, enrolment code or token/password. Auto-init is disabled in the manifest.
+- iOS: no crash reporting yet (sentry-kotlin-multiplatform needs the Cocoa SDK wired into the Xcode
+  project, which does not build from Windows — see the iOS blockers in `BACKLOG.md`).
+
 ## Gradle
 
 Uses version catalogs (`gradle/libs.versions.toml`). Configuration cache and build caching enabled. Firebase BOM is used for Android Firebase dependency management.

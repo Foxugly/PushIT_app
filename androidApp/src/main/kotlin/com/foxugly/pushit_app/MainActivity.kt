@@ -134,7 +134,8 @@ class MainActivity : ComponentActivity() {
 
         /**
          * Log uncaught exceptions, then hand them to the previous default handler
-         * (the platform's), so the process still dies and Play Vitals records the
+         * (Sentry's when a DSN is built in — PushItApplication installs it first —
+         * which itself chains to the platform's), so the process still dies and Play Vitals records the
          * crash. Swallowing them froze the app (dead main thread, then an ANR)
          * and hid the crash. Installed once per process: onCreate runs again on
          * every recreate(), and re-wrapping would chain our handler onto itself.

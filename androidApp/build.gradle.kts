@@ -25,6 +25,13 @@ val keystoreProperties = Properties().apply {
 fun releaseProp(name: String): String? = keystoreProperties.getProperty(name) ?: System.getenv(name)
 val hasReleaseSigning = releaseProp("RELEASE_STORE_FILE") != null
 
+// Sentry DSN (project pushit-app, org foxugly-srl, de.sentry.io): Gradle property
+// -PPUSHIT_SENTRY_DSN=… or env var PUSHIT_SENTRY_DSN (CI secret). Empty ⇒ the app
+// does not initialise Sentry (local / PR builds).
+val sentryDsn: String = (findProperty("PUSHIT_SENTRY_DSN") as String?)
+    ?.takeIf { it.isNotBlank() }
+    ?: System.getenv("PUSHIT_SENTRY_DSN").orEmpty()
+
 android {
     namespace = "com.foxugly.pushit_app"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -37,6 +44,7 @@ android {
         // human-facing semantic label (matches PUBLICATION_PLAY_STORE.md → "1.0.0").
         versionCode = 1
         versionName = "1.0.0"
+        buildConfigField("String", "SENTRY_DSN", "\"${sentryDsn.replace("\"", "")}\"")
     }
     buildFeatures {
         // BuildConfig.DEBUG is read in MainActivity to enable HTTP logging only in
@@ -87,5 +95,6 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.uiToolingPreview)
     implementation(platform(libs.firebase.bom))
+    implementation(libs.sentry.android.core)
     debugImplementation(libs.compose.uiTooling)
 }
