@@ -1,8 +1,10 @@
 package com.foxugly.pushit_app.ui.i18n
 
 import androidx.compose.runtime.staticCompositionLocalOf
+import com.foxugly.pushit_app.data.api.ApiException
 import com.foxugly.pushit_app.data.api.NetworkErrorKind
 import com.foxugly.pushit_app.data.api.NetworkException
+import com.foxugly.pushit_app.data.repository.AuthRepository
 import com.foxugly.pushit_app.platform.formatLocalShort
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
@@ -88,6 +90,7 @@ data class Strings(
     val currentPasswordInvalid: String,
     val passwordRequired: String,
     val deleteAccountFailed: String,
+    val deleteAccountBillingUnavailable: String,
     // QR scanner
     val scanEnrolmentCode: String,
     val enterManually: String,
@@ -123,6 +126,19 @@ data class Strings(
  * localized message; anything else keeps its own message, falling back to
  * [fallback]. Keeps the data layer language-agnostic.
  */
+/**
+ * Message for a failed `DELETE auth/me/`: a wrong password and an unavailable
+ * billing service (HTTP 503 `billing_unavailable`, account NOT deleted) get
+ * their own text; anything else falls back to [errorText].
+ */
+fun Strings.deleteAccountErrorText(throwable: Throwable): String? = when {
+    throwable is ApiException &&
+        throwable.errorCode == AuthRepository.ERROR_CURRENT_PASSWORD_INVALID -> currentPasswordInvalid
+    throwable is ApiException &&
+        throwable.errorCode == AuthRepository.ERROR_BILLING_UNAVAILABLE -> deleteAccountBillingUnavailable
+    else -> errorText(throwable, deleteAccountFailed)
+}
+
 fun Strings.errorText(throwable: Throwable, fallback: String): String? = when {
     throwable is kotlin.coroutines.cancellation.CancellationException -> null
     throwable is NetworkException && throwable.kind == NetworkErrorKind.TIMEOUT -> networkTimeout
@@ -221,6 +237,7 @@ private val FR = Strings(
     currentPasswordInvalid = "Mot de passe incorrect.",
     passwordRequired = "Le mot de passe est obligatoire.",
     deleteAccountFailed = "La suppression du compte a échoué.",
+    deleteAccountBillingUnavailable = "Le service de facturation est momentanément indisponible : votre compte n'a pas été supprimé. Réessayez plus tard.",
     scanEnrolmentCode = "Scanner le code d'enrôlement",
     enterManually = "Saisir le code manuellement",
     enterEnrolmentCode = "Saisir le code d'enrôlement",
@@ -315,6 +332,7 @@ private val NL = Strings(
     currentPasswordInvalid = "Onjuist wachtwoord.",
     passwordRequired = "Wachtwoord is verplicht.",
     deleteAccountFailed = "Het verwijderen van het account is mislukt.",
+    deleteAccountBillingUnavailable = "De factureringsdienst is tijdelijk niet beschikbaar: uw account is niet verwijderd. Probeer het later opnieuw.",
     scanEnrolmentCode = "Inschrijvingscode scannen",
     enterManually = "Code handmatig invoeren",
     enterEnrolmentCode = "Inschrijvingscode invoeren",
@@ -409,6 +427,7 @@ private val EN = Strings(
     currentPasswordInvalid = "Incorrect password.",
     passwordRequired = "Password is required.",
     deleteAccountFailed = "Account deletion failed.",
+    deleteAccountBillingUnavailable = "The billing service is temporarily unavailable: your account was not deleted. Please try again later.",
     scanEnrolmentCode = "Scan enrolment code",
     enterManually = "Enter token manually",
     enterEnrolmentCode = "Enter enrolment code",

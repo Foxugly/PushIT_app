@@ -13,7 +13,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
-import com.foxugly.pushit_app.data.api.ApiException
 import com.foxugly.pushit_app.data.api.LinkedApplication
 import com.foxugly.pushit_app.data.api.UserProfile
 import com.foxugly.pushit_app.data.repository.AuthRepository
@@ -22,6 +21,7 @@ import com.foxugly.pushit_app.platform.DeviceLinkManager
 import com.foxugly.pushit_app.ui.components.ErrorBanner
 import com.foxugly.pushit_app.ui.i18n.AppLanguage
 import com.foxugly.pushit_app.ui.i18n.LocalStrings
+import com.foxugly.pushit_app.ui.i18n.deleteAccountErrorText
 import com.foxugly.pushit_app.ui.i18n.errorText
 import com.foxugly.pushit_app.ui.theme.pushItTopAppBarColors
 import kotlinx.coroutines.launch
@@ -358,15 +358,7 @@ private fun DeleteAccountDialog(
                         error = null
                         onConfirm(password).fold(
                             onSuccess = { onDeleted() },
-                            onFailure = { throwable ->
-                                error = if (throwable is ApiException &&
-                                    throwable.errorCode == AuthRepository.ERROR_CURRENT_PASSWORD_INVALID
-                                ) {
-                                    strings.currentPasswordInvalid
-                                } else {
-                                    strings.errorText(throwable, strings.deleteAccountFailed)
-                                }
-                            },
+                            onFailure = { throwable -> error = strings.deleteAccountErrorText(throwable) },
                         )
                         isDeleting = false
                     }
