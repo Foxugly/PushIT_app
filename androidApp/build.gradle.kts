@@ -32,6 +32,29 @@ val sentryDsn: String = (findProperty("PUSHIT_SENTRY_DSN") as String?)
     ?.takeIf { it.isNotBlank() }
     ?: System.getenv("PUSHIT_SENTRY_DSN").orEmpty()
 
+// Versioning. versionName: gradle.properties `pushit.versionName` (single source).
+// versionCode must strictly increase on every Play upload; resolved in order:
+//   1. -PPUSHIT_VERSION_CODE / env PUSHIT_VERSION_CODE (explicit override),
+//   2. env GITHUB_RUN_NUMBER (CI — the release workflow's run counter, monotonic),
+//   3. `git rev-list --count HEAD` (local builds),
+//   4. 1 (no git available).
+// Only AABs built by .github/workflows/release.yml go to Play, so the CI counter
+// is the one that matters; local codes are for side-loaded test builds.
+val appVersionName: String = (findProperty("pushit.versionName") as String?) ?: "0.0.0"
+fun envOrProp(name: String): String? =
+    (findProperty(name) as String?)?.takeIf { it.isNotBlank() } ?: System.getenv(name)?.takeIf { it.isNotBlank() }
+val gitCommitCount: Int? = runCatching {
+    providers.exec {
+        commandLine("git", "rev-list", "--count", "HEAD")
+        isIgnoreExitValue = true
+    }.standardOutput.asText.get().trim().toIntOrNull()
+}.getOrNull()
+val appVersionCode: Int =
+    envOrProp("PUSHIT_VERSION_CODE")?.toIntOrNull()
+        ?: envOrProp("GITHUB_RUN_NUMBER")?.toIntOrNull()
+        ?: gitCommitCount
+        ?: 1
+
 android {
     namespace = "com.foxugly.pushit_app"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -40,10 +63,9 @@ android {
         applicationId = "com.foxugly.pushit_app"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        // versionCode must strictly increase on every Play upload; versionName is the
-        // human-facing semantic label (matches PUBLICATION_PLAY_STORE.md → "1.0.0").
-        versionCode = 1
-        versionName = "1.0.0"
+        // See "Versioning" above: never hard-code these.
+        versionCode = appVersionCode
+        versionName = appVersionName
         buildConfigField("String", "SENTRY_DSN", "\"${sentryDsn.replace("\"", "")}\"")
     }
     buildFeatures {

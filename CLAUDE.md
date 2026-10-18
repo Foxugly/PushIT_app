@@ -111,6 +111,21 @@ Android only, via `io.sentry:sentry-android-core`, initialised in `androidApp/..
 - iOS: no crash reporting yet (sentry-kotlin-multiplatform needs the Cocoa SDK wired into the Xcode
   project, which does not build from Windows — see the iOS blockers in `BACKLOG.md`).
 
+## Versioning
+
+- **versionName** (Android) / **MARKETING_VERSION** (iOS): single source = `pushit.versionName` in
+  `gradle.properties`. Bump it there for a release; keep `MARKETING_VERSION` in
+  `iosApp/Configuration/Config.xcconfig` equal to it (or pass
+  `MARKETING_VERSION=$(grep '^pushit.versionName=' gradle.properties | cut -d= -f2)` to `xcodebuild`).
+- **versionCode** (Android) is derived in `androidApp/build.gradle.kts`: `PUSHIT_VERSION_CODE`
+  (property/env override) → `GITHUB_RUN_NUMBER` (CI) → `git rev-list --count HEAD` (local) → 1.
+  Only the AAB built by `.github/workflows/release.yml` is uploaded to Play, so the release workflow's
+  run counter is what increases from one upload to the next. If a code ever collides (e.g. a manual
+  upload), re-run the workflow or set `PUSHIT_VERSION_CODE` higher.
+- **CURRENT_PROJECT_VERSION** (iOS build number) stays `1` in `Config.xcconfig` and is overridden at
+  build time: `xcodebuild … CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER` (CI) or
+  `agvtool new-version -all <n>` before archiving in Xcode. It must increase for every TestFlight upload.
+
 ## Gradle
 
 Uses version catalogs (`gradle/libs.versions.toml`). Configuration cache and build caching enabled. Firebase BOM is used for Android Firebase dependency management.
