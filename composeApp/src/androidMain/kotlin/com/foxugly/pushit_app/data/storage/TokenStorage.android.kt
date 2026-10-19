@@ -62,6 +62,11 @@ actual class TokenStorage(context: Context) {
         return legacy
     }
 
+    actual fun getLastPushToken(): String? = readToken(KEY_LAST_PUSH_TOKEN)
+    actual fun setLastPushToken(token: String?) {
+        writeToken(KEY_LAST_PUSH_TOKEN, token)
+    }
+
     actual fun getLanguage(): String? = readToken(KEY_LANGUAGE)
     actual fun setLanguage(code: String?) {
         writeToken(KEY_LANGUAGE, code)
@@ -144,6 +149,7 @@ actual class TokenStorage(context: Context) {
         private const val KEY_ENROLMENT_CODE = "enrolment_code"
         // Ancienne clé, lue une seule fois puis effacée (voir la migration).
         private const val KEY_LEGACY_APP_TOKEN = "app_token"
+        private const val KEY_LAST_PUSH_TOKEN = "last_push_token"
         private const val KEY_LANGUAGE = "ui_language"
         private const val KEY_NOTIF_STATE = "notification_state"
     }

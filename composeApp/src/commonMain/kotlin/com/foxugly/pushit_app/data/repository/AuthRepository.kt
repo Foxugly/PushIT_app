@@ -31,24 +31,22 @@ class AuthRepository(
         }
     }
 
-    suspend fun register(email: String, password: String): Result<UserProfile> {
-        AppLogger.info(tag, "Register requested")
-        val registerResult = api.register(RegisterRequest(email = email, password = password))
-        if (registerResult.isFailure) {
-            AppLogger.error(tag, "Register failed", registerResult.exceptionOrNull())
-            return registerResult
+    /** Re-send the e-mail confirmation link after a 403 [ERROR_EMAIL_NOT_VERIFIED] login. */
+    suspend fun resendConfirmationEmail(email: String): Result<Unit> {
+        AppLogger.info(tag, "Confirmation e-mail resend requested")
+        return api.resendConfirmationEmail(email.trim()).onFailure {
+            AppLogger.warn(tag, "Confirmation e-mail resend failed: ${it.message}")
         }
-        return login(email, password)
     }
 
+    /**
+     * Revoke the refresh token server-side (refreshing an expired access token
+     * first, see [PushItApi.logout]), then wipe the local session whatever the
+     * outcome — offline, the user is still signed out locally.
+     */
     suspend fun logout(): Result<Unit> {
         AppLogger.info(tag, "Logout requested")
-        val refreshToken = tokenStorage.getRefreshToken()
-        val result = if (refreshToken != null) {
-            api.logout(refreshToken)
-        } else {
-            Result.success(Unit)
-        }
+        val result = api.logout()
         tokenStorage.clearAuthTokens()
         return result
     }
@@ -136,6 +134,12 @@ class AuthRepository(
     }
 
     companion object {
+        /** HTTP 403 on `auth/login/`: valid credentials, e-mail not confirmed yet. */
+        const val ERROR_EMAIL_NOT_VERIFIED = "email_not_verified"
+
+        /** HTTP 429 (rate limit), e.g. on `auth/login/` or `auth/email/resend/`. */
+        const val ERROR_THROTTLED = "throttled"
+
         /** Server error code for a wrong password on `DELETE auth/me/`. */
         const val ERROR_CURRENT_PASSWORD_INVALID = "current_password_invalid"
 

@@ -45,7 +45,7 @@ plateforme Android/iOS, build/tests/hygiène). Sévérités : **P0** bloquant ·
 
 - [x] **Turnstile → mobile login-only** — l'inscription est retirée du mobile (`RegisterScreen` supprimé,
   `Screen.Register` retiré, hint « créer un compte sur pushit.foxugly.com » sur le login). Plus de
-  blocage captcha ; le login n'a pas de Turnstile. *(La couche data `register()`/`RegisterRequest` reste, inutilisée.)*
+  blocage captcha ; le login n'a pas de Turnstile. *(La couche data `register()`/`RegisterRequest`, inutilisée, a été retirée le 2026-10-19.)*
 - [x] **App-token : garder au logout + bouton « Unlink this device »** dans Settings (efface l'app-token local).
 
 ---

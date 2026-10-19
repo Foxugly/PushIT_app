@@ -85,6 +85,88 @@ class AuthRepositoryTest {
     }
 
     @Test
+    fun logoutWithExpiredAccessRefreshesThenRevokesTheRotatedRefreshToken() = runTest {
+        // auth/logout/ needs a valid access token: with an expired one the first call
+        // gets 401, so we refresh (which rotates the refresh token) and replay with the
+        // NEW refresh token — the one the server must blacklist.
+        val store = FakeTokenStore(access = "expired", refresh = "ref-1")
+        val logoutBodies = mutableListOf<String>()
+        val engine = MockEngine { request ->
+            when {
+                request.url.encodedPath.endsWith("/auth/refresh/") ->
+                    respond("""{"access":"fresh","refresh":"ref-2"}""", HttpStatusCode.OK, jsonHeader)
+                request.headers[HttpHeaders.Authorization] == "Bearer fresh" -> {
+                    logoutBodies += request.body.toByteArray().decodeToString()
+                    respond("", HttpStatusCode.NoContent)
+                }
+                else -> {
+                    logoutBodies += request.body.toByteArray().decodeToString()
+                    respond("""{"code":"token_not_valid"}""", HttpStatusCode.Unauthorized, jsonHeader)
+                }
+            }
+        }
+        val repo = AuthRepository(api(store, engine), store)
+
+        val result = repo.logout()
+
+        assertTrue(result.isSuccess, "${result.exceptionOrNull()}")
+        assertEquals(listOf("""{"refresh":"ref-1"}""", """{"refresh":"ref-2"}"""), logoutBodies)
+        assertTrue(store.cleared)
+    }
+
+    @Test
+    fun logoutWithDeadSessionSucceedsSilently() = runTest {
+        // Refresh token refused too: nothing left to revoke server-side. Logout still
+        // succeeds and must not fire the "session expired" eject.
+        val store = FakeTokenStore(access = "expired", refresh = "dead")
+        val engine = MockEngine { respond("", HttpStatusCode.Unauthorized) }
+        val pushItApi = api(store, engine)
+        var authFailures = 0
+        pushItApi.onAuthFailure = { authFailures++ }
+
+        val result = AuthRepository(pushItApi, store).logout()
+
+        assertTrue(result.isSuccess, "${result.exceptionOrNull()}")
+        assertEquals(0, authFailures)
+        assertTrue(store.cleared)
+    }
+
+    @Test
+    fun loginWithUnverifiedEmailExposesTheCode() = runTest {
+        val store = FakeTokenStore()
+        val engine = MockEngine {
+            respond(
+                """{"code":"email_not_verified","detail":"Please confirm your email address before signing in."}""",
+                HttpStatusCode.Forbidden, jsonHeader,
+            )
+        }
+        val error = AuthRepository(api(store, engine), store).login("a@b.test", "pw").exceptionOrNull()
+
+        val apiError = assertIs<ApiException>(error)
+        assertEquals(403, apiError.statusCode)
+        assertEquals(AuthRepository.ERROR_EMAIL_NOT_VERIFIED, apiError.errorCode)
+        assertEquals(null, store.getAccessToken())
+    }
+
+    @Test
+    fun resendConfirmationPostsTheEmail() = runTest {
+        val store = FakeTokenStore()
+        var path = ""
+        var body = ""
+        val engine = MockEngine { request ->
+            path = request.url.encodedPath
+            body = request.body.toByteArray().decodeToString()
+            respond("""{"code":"ok","detail":"sent"}""", HttpStatusCode.OK, jsonHeader)
+        }
+
+        val result = AuthRepository(api(store, engine), store).resendConfirmationEmail(" a@b.test ")
+
+        assertTrue(result.isSuccess, "${result.exceptionOrNull()}")
+        assertEquals("/api/v1/auth/email/resend/", path)
+        assertEquals("""{"email":"a@b.test"}""", body)
+    }
+
+    @Test
     fun isAuthenticatedReflectsTokenPresence() {
         assertTrue(AuthRepository(api(FakeTokenStore(access = "x"), MockEngine { respond("", HttpStatusCode.OK) }), FakeTokenStore(access = "x")).isAuthenticated())
         assertFalse(AuthRepository(api(FakeTokenStore(), MockEngine { respond("", HttpStatusCode.OK) }), FakeTokenStore()).isAuthenticated())

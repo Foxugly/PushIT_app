@@ -4,6 +4,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import com.foxugly.pushit_app.data.api.ApiException
 import com.foxugly.pushit_app.data.api.NetworkErrorKind
 import com.foxugly.pushit_app.data.api.NetworkException
+import com.foxugly.pushit_app.data.api.isEnrolmentCodeRejection
 import com.foxugly.pushit_app.data.repository.AuthRepository
 import com.foxugly.pushit_app.platform.formatLocalShort
 import kotlinx.datetime.TimeZone
@@ -37,6 +38,12 @@ data class Strings(
     val loginFailed: String,
     val invalidCredentials: String,
     val serverError: String,
+    // 403 `email_not_verified`: credentials OK, e-mail not confirmed yet.
+    val emailNotVerified: String,
+    val resendConfirmation: String,
+    val confirmationResent: String,
+    // 429 `throttled` on login / resend.
+    val tooManyAttempts: String,
     val registerHint: String,
     val credit: String,
     // Notifications list
@@ -100,6 +107,12 @@ data class Strings(
     val backToScanner: String,
     val invalidQrCode: String,
     val codeMustStartWith: String,
+    // An `apt_` send token scanned/typed instead of an `apk_` enrolment code.
+    val sendTokenNotEnrolmentCode: String,
+    // Enrolment code refused by the server (`app_token_*` codes).
+    val enrolmentCodeInvalid: String,
+    val enrolmentCodeInactive: String,
+    val enrolmentCodeRevoked: String,
     val cameraPermissionRationale: String,
     val grantPermission: String,
     val cameraSetupFailed: String,
@@ -139,11 +152,39 @@ fun Strings.deleteAccountErrorText(throwable: Throwable): String? = when {
     else -> errorText(throwable, deleteAccountFailed)
 }
 
+/**
+ * Message for a failed `auth/login/` (or confirmation resend). An unconfirmed
+ * e-mail (403 `email_not_verified`) and a rate limit (429) get their own text;
+ * any other 4xx is shown as bad credentials rather than the raw API error. The
+ * server-error and transport (offline/timeout) cases stay distinct.
+ */
+fun Strings.loginErrorText(throwable: Throwable): String? = when {
+    throwable is ApiException &&
+        throwable.errorCode == AuthRepository.ERROR_EMAIL_NOT_VERIFIED -> emailNotVerified
+    throwable is ApiException && throwable.statusCode == 429 -> tooManyAttempts
+    throwable is ApiException && throwable.statusCode in 500..599 -> serverError
+    throwable is ApiException -> invalidCredentials
+    else -> errorText(throwable, loginFailed)
+}
+
 fun Strings.errorText(throwable: Throwable, fallback: String): String? = when {
     throwable is kotlin.coroutines.cancellation.CancellationException -> null
+    throwable.isEnrolmentCodeRejection() -> enrolmentCodeErrorText((throwable as ApiException).errorCode)
     throwable is NetworkException && throwable.kind == NetworkErrorKind.TIMEOUT -> networkTimeout
     throwable is NetworkException -> networkOffline
     else -> throwable.message ?: fallback
+}
+
+/**
+ * Message for an enrolment code refused by the server (`app_token_*` codes on
+ * `devices/link/`): never the raw API text, which names internal codes.
+ */
+fun Strings.enrolmentCodeErrorText(errorCode: String?): String = when (errorCode) {
+    "app_token_inactive" -> enrolmentCodeInactive
+    "app_token_revoked" -> enrolmentCodeRevoked
+    // app_token_invalid, app_token_invalid_format, app_token_missing, and any
+    // future app_token_* code.
+    else -> enrolmentCodeInvalid
 }
 
 /**
@@ -190,6 +231,10 @@ private val FR = Strings(
     loginFailed = "Échec de la connexion",
     invalidCredentials = "E-mail ou mot de passe incorrect.",
     serverError = "Erreur serveur, réessayez plus tard.",
+    emailNotVerified = "Confirmez d'abord votre adresse e-mail : ouvrez le lien reçu par e-mail, puis reconnectez-vous.",
+    resendConfirmation = "Renvoyer l'e-mail de confirmation",
+    confirmationResent = "Si cette adresse doit être confirmée, un nouveau lien vient d'être envoyé.",
+    tooManyAttempts = "Trop de tentatives. Patientez une minute avant de réessayer.",
     registerHint = "Nouveau ? Créez un compte sur pushit.foxugly.com",
     credit = "par ",
     notificationsTitle = "Notifications",
@@ -246,6 +291,10 @@ private val FR = Strings(
     backToScanner = "Retour au scanner",
     invalidQrCode = "Ce QR code n'est pas un code d'enrôlement PushIT.",
     codeMustStartWith = "Le code doit commencer par « apk_ ».",
+    sendTokenNotEnrolmentCode = "Ceci est un jeton d'envoi (apt_), pas un code d'enrôlement. Scannez le QR code d'enrôlement (apk_) de l'application.",
+    enrolmentCodeInvalid = "Ce code d'enrôlement n'est pas (ou plus) valide. Scannez à nouveau le QR code de l'application.",
+    enrolmentCodeInactive = "Cette application est désactivée : elle n'accepte pas de nouveaux appareils pour l'instant.",
+    enrolmentCodeRevoked = "Ce code d'enrôlement a été révoqué. Demandez le nouveau QR code à l'éditeur de l'application.",
     cameraPermissionRationale = "L'accès à la caméra est nécessaire pour scanner les QR codes.",
     grantPermission = "Autoriser l'accès",
     cameraSetupFailed = "Impossible d'initialiser la caméra.",
@@ -285,6 +334,10 @@ private val NL = Strings(
     loginFailed = "Inloggen mislukt",
     invalidCredentials = "Onjuist e-mailadres of wachtwoord.",
     serverError = "Serverfout, probeer het later opnieuw.",
+    emailNotVerified = "Bevestig eerst je e-mailadres: open de link in de e-mail en log daarna opnieuw in.",
+    resendConfirmation = "Bevestigingsmail opnieuw versturen",
+    confirmationResent = "Als dit adres nog bevestigd moet worden, is er zojuist een nieuwe link verstuurd.",
+    tooManyAttempts = "Te veel pogingen. Wacht een minuut en probeer het opnieuw.",
     registerHint = "Nieuw hier? Maak een account aan op pushit.foxugly.com",
     credit = "door ",
     notificationsTitle = "Notificaties",
@@ -341,6 +394,10 @@ private val NL = Strings(
     backToScanner = "Terug naar scanner",
     invalidQrCode = "Deze QR-code is geen PushIT-inschrijvingscode.",
     codeMustStartWith = "De code moet met 'apk_' beginnen.",
+    sendTokenNotEnrolmentCode = "Dit is een verzendtoken (apt_), geen inschrijvingscode. Scan de inschrijvings-QR-code (apk_) van de applicatie.",
+    enrolmentCodeInvalid = "Deze inschrijvingscode is niet (meer) geldig. Scan de QR-code van de applicatie opnieuw.",
+    enrolmentCodeInactive = "Deze applicatie is uitgeschakeld en aanvaardt momenteel geen nieuwe toestellen.",
+    enrolmentCodeRevoked = "Deze inschrijvingscode is ingetrokken. Vraag de nieuwe QR-code aan de uitgever van de applicatie.",
     cameraPermissionRationale = "Cameratoegang is vereist om QR-codes te scannen.",
     grantPermission = "Toegang verlenen",
     cameraSetupFailed = "Kan de camera niet starten.",
@@ -380,6 +437,10 @@ private val EN = Strings(
     loginFailed = "Login failed",
     invalidCredentials = "Incorrect email or password.",
     serverError = "Server error, please try again later.",
+    emailNotVerified = "Please confirm your email address first: open the link we emailed you, then sign in again.",
+    resendConfirmation = "Resend confirmation email",
+    confirmationResent = "If this address still needs confirming, a new link has just been sent.",
+    tooManyAttempts = "Too many attempts. Please wait a minute and try again.",
     registerHint = "New here? Create an account at pushit.foxugly.com",
     credit = "by ",
     notificationsTitle = "Notifications",
@@ -436,6 +497,10 @@ private val EN = Strings(
     backToScanner = "Back to scanner",
     invalidQrCode = "This QR code is not a PushIT enrolment code.",
     codeMustStartWith = "The code must start with \"apk_\".",
+    sendTokenNotEnrolmentCode = "This is a sending token (apt_), not an enrolment code. Scan the application's enrolment QR code (apk_).",
+    enrolmentCodeInvalid = "This enrolment code is not (or no longer) valid. Scan the application's QR code again.",
+    enrolmentCodeInactive = "This application is disabled and is not accepting new devices right now.",
+    enrolmentCodeRevoked = "This enrolment code has been revoked. Ask the application's publisher for the new QR code.",
     cameraPermissionRationale = "Camera permission is required to scan QR codes.",
     grantPermission = "Grant permission",
     cameraSetupFailed = "Could not start the camera.",

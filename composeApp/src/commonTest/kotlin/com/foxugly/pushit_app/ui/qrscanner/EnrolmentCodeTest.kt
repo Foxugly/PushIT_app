@@ -1,6 +1,7 @@
 package com.foxugly.pushit_app.ui.qrscanner
 
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -8,17 +9,17 @@ class EnrolmentCodeTest {
 
     @Test
     fun acceptsTheEnrolmentCode() {
-        // Ce que la console met desormais dans le QR. Le refuser rendrait tout
-        // nouveau QR inutilisable -- c'est exactement ce que faisait le filtre
-        // precedent, qui n'acceptait que `apt_`.
+        // Ce que la console met dans le QR.
         assertTrue(looksLikeEnrolmentCode("apk_Ab12Cd34Ef56"))
+        assertEquals(EnrolmentCodeCheck.VALID, checkEnrolmentCode("apk_Ab12Cd34Ef56"))
     }
 
     @Test
-    fun stillAcceptsTheLegacyToken() {
-        // Des applications affichent encore leur ancien jeton, et le serveur
-        // l'accepte toujours a l'enrolement.
-        assertTrue(looksLikeEnrolmentCode("apt_0123456789abcdef0123456789abcdef"))
+    fun rejectsASendTokenWithItsOwnVerdict() {
+        // `apt_` est un jeton d'emission : il ne doit jamais etre stocke comme
+        // code d'enrolement, et l'utilisateur doit savoir pourquoi.
+        assertFalse(looksLikeEnrolmentCode("apt_0123456789abcdef0123456789abcdef"))
+        assertEquals(EnrolmentCodeCheck.SEND_TOKEN, checkEnrolmentCode("apt_0123456789abcdef"))
     }
 
     @Test
@@ -26,5 +27,6 @@ class EnrolmentCodeTest {
         assertFalse(looksLikeEnrolmentCode("https://example.com"))
         assertFalse(looksLikeEnrolmentCode(""))
         assertFalse(looksLikeEnrolmentCode("APK_uppercase"))
+        assertEquals(EnrolmentCodeCheck.INVALID, checkEnrolmentCode("https://example.com"))
     }
 }

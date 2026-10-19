@@ -58,11 +58,13 @@ fun QrScannerScreen(
                     QrScannerView(
                         onQrCodeScanned = { scanned ->
                             error = null
-                            if (looksLikeEnrolmentCode(scanned)) {
-                                tokenStorage.setEnrolmentCode(scanned)
-                                onCodeScanned()
-                            } else {
-                                error = strings.invalidQrCode
+                            when (checkEnrolmentCode(scanned)) {
+                                EnrolmentCodeCheck.VALID -> {
+                                    tokenStorage.setEnrolmentCode(scanned)
+                                    onCodeScanned()
+                                }
+                                EnrolmentCodeCheck.SEND_TOKEN -> error = strings.sendTokenNotEnrolmentCode
+                                EnrolmentCodeCheck.INVALID -> error = strings.invalidQrCode
                             }
                         },
                         onError = { errorMessage ->
@@ -123,11 +125,13 @@ fun QrScannerScreen(
                     Button(
                         onClick = {
                             val trimmed = manualCode.trim()
-                            if (looksLikeEnrolmentCode(trimmed)) {
-                                tokenStorage.setEnrolmentCode(trimmed)
-                                onCodeScanned()
-                            } else {
-                                error = strings.codeMustStartWith
+                            when (checkEnrolmentCode(trimmed)) {
+                                EnrolmentCodeCheck.VALID -> {
+                                    tokenStorage.setEnrolmentCode(trimmed)
+                                    onCodeScanned()
+                                }
+                                EnrolmentCodeCheck.SEND_TOKEN -> error = strings.sendTokenNotEnrolmentCode
+                                EnrolmentCodeCheck.INVALID -> error = strings.codeMustStartWith
                             }
                         },
                         enabled = manualCode.isNotBlank(),

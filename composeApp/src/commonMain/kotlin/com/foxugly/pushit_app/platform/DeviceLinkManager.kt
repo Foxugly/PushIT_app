@@ -5,7 +5,7 @@ import com.foxugly.pushit_app.data.api.DeviceIdentifyResponse
 import com.foxugly.pushit_app.data.api.DeviceLinkRequest
 import com.foxugly.pushit_app.data.api.DeviceUnlinkByApplicationRequest
 import com.foxugly.pushit_app.data.api.DeviceUnlinkRequest
-import com.foxugly.pushit_app.data.api.ApiException
+import com.foxugly.pushit_app.data.api.isEnrolmentCodeRejection
 import com.foxugly.pushit_app.data.api.LinkedApplication
 import com.foxugly.pushit_app.data.api.PushItApi
 import com.foxugly.pushit_app.data.storage.TokenStore
@@ -50,6 +50,19 @@ class DeviceLinkManager(
     // both decide to link and clobber the cache.
     private val linkMutex = Mutex()
 
+    // Serializes identify so two concurrent calls can't both hand the device over
+    // from the same `previous_push_token` (read-send-store of the last push token).
+    private val identifyMutex = Mutex()
+
+    /**
+     * The FCM token to send as `previous_push_token`: the one last registered
+     * with the server, when FCM has since rotated it. The server then moves the
+     * existing Device (app links + inbox history) to [currentToken] instead of
+     * creating a fresh, unlinked one. Null when nothing rotated.
+     */
+    private fun rotatedFrom(currentToken: String): String? =
+        tokenStorage.getLastPushToken()?.takeIf { it != currentToken }
+
     suspend fun identify(): Result<DeviceIdentifyResponse?> {
         tokenStorage.getAccessToken() ?: run {
             AppLogger.info(tag, "Device identify skipped: no access token")
@@ -61,20 +74,30 @@ class DeviceLinkManager(
         }
 
         val platform = getPlatform()
-        AppLogger.info(tag, "Identifying device platform=${platform.platformType} name=${platform.deviceName}")
-        return api.identifyDevice(
-            DeviceIdentifyRequest(
-                pushToken = fcmToken,
-                platform = platform.platformType,
-                deviceName = platform.deviceName,
-            )
-        ).onSuccess {
+        return identifyMutex.withLock {
+            val previous = rotatedFrom(fcmToken)
             AppLogger.info(
                 tag,
-                "Device identified id=${it.deviceId} deviceCreated=${it.deviceCreated} linkedApps=${it.linkedApplications.size}",
+                "Identifying device platform=${platform.platformType} name=${platform.deviceName} rotated=${previous != null}",
             )
-        }.onFailure {
-            AppLogger.error(tag, "Device identify failed: ${it.message}", it)
+            api.identifyDevice(
+                DeviceIdentifyRequest(
+                    pushToken = fcmToken,
+                    platform = platform.platformType,
+                    deviceName = platform.deviceName,
+                    previousPushToken = previous,
+                )
+            ).onSuccess {
+                // Only once the server knows the new token: a failed hand-over is
+                // retried with the same previous token on the next identify.
+                tokenStorage.setLastPushToken(fcmToken)
+                AppLogger.info(
+                    tag,
+                    "Device identified id=${it.deviceId} deviceCreated=${it.deviceCreated} linkedApps=${it.linkedApplications.size}",
+                )
+            }.onFailure {
+                AppLogger.error(tag, "Device identify failed: ${it.message}", it)
+            }
         }
     }
 
@@ -108,13 +131,14 @@ class DeviceLinkManager(
                 )
             )
         }
-        // Not yet linked: best-effort automatic link. A 401 here (a stale enrolment code that no
-        // longer matches any app, e.g. after a rotation) is non-fatal for an automatic sync —
-        // log it and fall back to the identify state instead of surfacing a scary error.
+        // Not yet linked: best-effort automatic link. A refused enrolment code (403
+        // `app_token_*`: revoked, regenerated or app disabled) is non-fatal for an automatic
+        // sync — linkWithEnrolmentCode already forgot the dead code so it is not retried on
+        // every launch; fall back to the identify state instead of surfacing a scary error.
         // Explicit QR-scan linking (linkWithStoredEnrolmentCode) still surfaces failures.
         return linkWithEnrolmentCode(enrolmentCode, identified).recoverCatching { error ->
-            if (error is ApiException && error.statusCode == 401) {
-                AppLogger.warn(tag, "Automatic device link got 401 (stale enrolment code), ignoring: ${error.message}")
+            if (error.isEnrolmentCodeRejection()) {
+                AppLogger.warn(tag, "Automatic device link: stored enrolment code refused, ignoring: ${error.message}")
                 DeviceConnectionState(
                     deviceId = identified.deviceId,
                     linkedApplications = identified.linkedApplications,
@@ -162,14 +186,17 @@ class DeviceLinkManager(
 
             val platform = getPlatform()
             AppLogger.info(tag, "Linking device platform=${platform.platformType} name=${platform.deviceName}")
-            val result = api.linkDevice(
-                DeviceLinkRequest(
-                    appToken = enrolmentCode,
-                    pushToken = fcmToken,
-                    platform = platform.platformType,
-                    deviceName = platform.deviceName,
-                )
-            )
+            val result = identifyMutex.withLock {
+                api.linkDevice(
+                    DeviceLinkRequest(
+                        appToken = enrolmentCode,
+                        pushToken = fcmToken,
+                        platform = platform.platformType,
+                        deviceName = platform.deviceName,
+                        previousPushToken = rotatedFrom(fcmToken),
+                    )
+                ).onSuccess { tokenStorage.setLastPushToken(fcmToken) }
+            }
 
             result.map {
                 lastLinkedFcmToken = fcmToken
@@ -183,6 +210,14 @@ class DeviceLinkManager(
                 )
             }.onFailure {
                 AppLogger.error(tag, "Device link failed: ${it.message}", it)
+                // The server refused the enrolment code itself (403 app_token_*): it
+                // will never work again, so forget it rather than re-sending it on
+                // every launch. Only if it is still the stored one (a new scan wins).
+                if (it.isEnrolmentCodeRejection() && tokenStorage.getEnrolmentCode() == enrolmentCode) {
+                    AppLogger.warn(tag, "Enrolment code refused by the server; forgetting it")
+                    tokenStorage.setEnrolmentCode(null)
+                    lastLinkedEnrolmentCode = null
+                }
             }
         }
     }
@@ -261,6 +296,9 @@ class DeviceLinkManager(
             AppLogger.warn(tag, "Logout deregistration failed; clearing locally", e)
         }
         forgetEnrolmentCodeLocally()
+        // Signed out: the next account on this phone must not inherit this Device
+        // through a `previous_push_token` hand-over.
+        tokenStorage.setLastPushToken(null)
         return unlinked
     }
 
@@ -268,7 +306,10 @@ class DeviceLinkManager(
      * Forget the enrolment code and the in-memory link cache without calling the
      * server — after account deletion, when the server already dropped the devices.
      */
-    suspend fun forgetLocalLinkState() = forgetEnrolmentCodeLocally()
+    suspend fun forgetLocalLinkState() {
+        forgetEnrolmentCodeLocally()
+        tokenStorage.setLastPushToken(null)
+    }
 
     private suspend fun forgetEnrolmentCodeLocally() = linkMutex.withLock {
         tokenStorage.setEnrolmentCode(null)
@@ -276,12 +317,18 @@ class DeviceLinkManager(
         lastLinkedFcmToken = null
     }
 
+    /**
+     * React to an FCM token rotation. [onLink] is expected to run
+     * [syncAuthenticatedDevice], whose identify sends the new token together with
+     * the last registered one (`previous_push_token`): the server moves the
+     * existing Device to the new token, keeping ALL its app links and inbox
+     * history — not just the app of the stored enrolment code.
+     */
     fun startObservingTokenChanges(onLink: (Result<Boolean>) -> Unit) {
         fcmTokenProvider.observeTokenChanges { newToken ->
             AppLogger.info(tag, "Observed FCM token change")
             // Route the cache reset through linkMutex (off the FCM callback thread)
-            // so it can't race a concurrent link. The relink itself is driven by
-            // onLink → linkWithEnrolmentCode, which re-takes the same lock.
+            // so it can't race a concurrent link.
             scope.launch {
                 linkMutex.withLock { lastLinkedFcmToken = null }
                 onLink(Result.success(false))

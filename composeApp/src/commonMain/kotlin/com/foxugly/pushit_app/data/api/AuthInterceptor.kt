@@ -58,8 +58,15 @@ class AuthInterceptor(
      * mutex we first check whether a concurrent caller already refreshed (current
      * token differs from the stale one): if so we skip a redundant — and with
      * refresh-token rotation, failure-prone — second `auth/refresh/` round-trip.
+     *
+     * [notifyAuthFailure] = false keeps [onAuthFailure] silent on a dead session
+     * (logout: the user is already leaving, no "session expired" eject needed).
      */
-    suspend fun refreshIfNeeded(client: HttpClient, staleAccessToken: String?): Boolean =
+    suspend fun refreshIfNeeded(
+        client: HttpClient,
+        staleAccessToken: String?,
+        notifyAuthFailure: Boolean = true,
+    ): Boolean =
         refreshMutex.withLock {
             val current = tokenStorage.getAccessToken()
             if (current != null && current != staleAccessToken) {
@@ -68,7 +75,7 @@ class AuthInterceptor(
             }
             val refreshToken = tokenStorage.getRefreshToken() ?: run {
                 AppLogger.warn(tag, "Unauthorized response and no refresh token available")
-                onAuthFailure?.invoke()
+                if (notifyAuthFailure) onAuthFailure?.invoke()
                 return@withLock false
             }
             try {
@@ -92,7 +99,7 @@ class AuthInterceptor(
                         // The server refused the refresh token itself: the session is over.
                         AppLogger.warn(tag, "Access token refresh rejected with HTTP ${refreshResponse.status.value}")
                         tokenStorage.clearAuthTokens()
-                        onAuthFailure?.invoke()
+                        if (notifyAuthFailure) onAuthFailure?.invoke()
                         false
                     }
                     else -> {

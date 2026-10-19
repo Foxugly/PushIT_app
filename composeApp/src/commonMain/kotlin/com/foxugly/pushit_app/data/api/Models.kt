@@ -19,13 +19,8 @@ data class LoginResponse(
 )
 
 @Serializable
-data class RegisterRequest(
+data class EmailResendRequest(
     val email: String,
-    val password: String,
-    // Cloudflare Turnstile token. The backend only enforces it when Turnstile is
-    // enabled server-side; the mobile client has no captcha widget, so this stays
-    // null today (omitted from the body via explicitNulls=false). See PushItApi.json.
-    @SerialName("turnstile_token") val turnstileToken: String? = null,
 )
 
 @Serializable
@@ -65,14 +60,21 @@ data class DeviceIdentifyRequest(
     @SerialName("push_token") val pushToken: String,
     val platform: String,
     @SerialName("device_name") val deviceName: String,
+    // The FCM token this device last registered with the server, sent only when
+    // FCM rotated it: the server then moves the existing Device to [pushToken],
+    // keeping its app links and inbox history. Null (omitted) otherwise.
+    @SerialName("previous_push_token") val previousPushToken: String? = null,
 )
 
 @Serializable
 data class DeviceLinkRequest(
+    // The enrolment code (`apk_…`), sent in the JSON body — not as a header.
     @SerialName("app_token") val appToken: String,
     @SerialName("push_token") val pushToken: String,
     val platform: String,
     @SerialName("device_name") val deviceName: String,
+    // Same rotation hand-over as [DeviceIdentifyRequest.previousPushToken].
+    @SerialName("previous_push_token") val previousPushToken: String? = null,
 )
 
 @Serializable

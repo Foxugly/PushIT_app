@@ -10,6 +10,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -107,25 +108,117 @@ class DeviceLinkManagerTest {
     }
 
     @Test
-    fun syncSwallowsInvalidEnrolmentCodeWhenNotYetLinked() = runTest {
+    fun syncSwallowsAndForgetsRefusedEnrolmentCodeWhenNotYetLinked() = runTest {
+        val paths = mutableListOf<String>()
         val engine = MockEngine { request ->
+            paths += request.url.encodedPath
             if (request.url.encodedPath.endsWith("/devices/link/")) {
                 respond(
-                    """{"detail":"Invalid app token","code":"app_token_invalid"}""",
-                    HttpStatusCode.Unauthorized,
+                    """{"detail":"Invalid app token.","code":"app_token_invalid"}""",
+                    HttpStatusCode.Forbidden,
                     jsonHeader,
                 )
             } else {
                 respond(IDENTIFY_NO_LINKS, HttpStatusCode.OK, jsonHeader)
             }
         }
-        // Not yet linked + a stale stored app token → automatic link gets a 401, which is non-fatal.
-        val result = manager(FakeTokenStore(access = "a", app = "apt_stale"), FakeFcmTokenSource("fcm"), engine)
-            .syncAuthenticatedDevice()
+        val store = FakeTokenStore(access = "a", refresh = "r", app = "apk_stale")
+        // Not yet linked + a dead stored code → the automatic link gets 403, which is non-fatal.
+        val result = manager(store, FakeFcmTokenSource("fcm"), engine).syncAuthenticatedDevice()
 
-        assertTrue(result.isSuccess, "a stale enrolment code on an automatic sync must be non-fatal")
+        assertTrue(result.isSuccess, "a refused enrolment code on an automatic sync must be non-fatal")
         assertEquals(1, result.getOrNull()?.deviceId)
         assertEquals(0, result.getOrNull()?.linkedApplications?.size)
+        assertNull(store.getEnrolmentCode(), "a refused code must be forgotten, not retried on every launch")
+        assertFalse(paths.any { it.endsWith("/auth/refresh/") }, "a refused enrolment code is not a session problem")
+    }
+
+    @Test
+    fun legacy401EnrolmentRejectionDoesNotRefreshTheSession() = runTest {
+        // Servers before the 403 switch answered 401 app_token_invalid: that must not
+        // rotate the JWT pair and replay the link.
+        val paths = mutableListOf<String>()
+        val engine = MockEngine { request ->
+            paths += request.url.encodedPath
+            if (request.url.encodedPath.endsWith("/devices/link/")) {
+                respond("""{"detail":"Invalid app token.","code":"app_token_invalid"}""", HttpStatusCode.Unauthorized, jsonHeader)
+            } else {
+                respond(IDENTIFY_NO_LINKS, HttpStatusCode.OK, jsonHeader)
+            }
+        }
+        val store = FakeTokenStore(access = "a", refresh = "r", app = "apk_dead")
+
+        val result = manager(store, FakeFcmTokenSource("fcm"), engine).linkWithStoredEnrolmentCode()
+
+        assertTrue(result.isFailure, "an explicit link still surfaces the refusal")
+        assertEquals(1, paths.count { it.endsWith("/devices/link/") }, "no replay")
+        assertFalse(paths.any { it.endsWith("/auth/refresh/") })
+        assertEquals("r", store.getRefreshToken())
+        assertNull(store.getEnrolmentCode())
+    }
+
+    @Test
+    fun identifyHandsTheDeviceOverAfterAnFcmRotation() = runTest {
+        val bodies = mutableListOf<String>()
+        val engine = MockEngine { request ->
+            bodies += request.body.toByteArray().decodeToString()
+            respond(IDENTIFY_OK, HttpStatusCode.OK, jsonHeader)
+        }
+        val store = FakeTokenStore(access = "a", lastPush = "fcm-old")
+        val fcm = FakeFcmTokenSource("fcm-new")
+        val mgr = manager(store, fcm, engine)
+
+        assertTrue(mgr.identify().isSuccess)
+        assertTrue(bodies.single().contains("\"previous_push_token\":\"fcm-old\""), bodies.single())
+        assertTrue(bodies.single().contains("\"push_token\":\"fcm-new\""), bodies.single())
+        assertEquals("fcm-new", store.getLastPushToken(), "the new token becomes the registered one")
+
+        // Next identify with the same token: no hand-over any more.
+        assertTrue(mgr.identify().isSuccess)
+        assertFalse(bodies.last().contains("previous_push_token"), bodies.last())
+    }
+
+    @Test
+    fun failedHandOverKeepsThePreviousTokenForTheNextTry() = runTest {
+        val engine = MockEngine { throw IOException("offline") }
+        val store = FakeTokenStore(access = "a", lastPush = "fcm-old")
+
+        assertTrue(manager(store, FakeFcmTokenSource("fcm-new"), engine).identify().isFailure)
+        assertEquals("fcm-old", store.getLastPushToken())
+    }
+
+    @Test
+    fun observedRotationResyncsWithThePreviousToken() = runTest {
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val bodies = mutableListOf<String>()
+        val engine = MockEngine { request ->
+            bodies += request.body.toByteArray().decodeToString()
+            respond(IDENTIFY_OK, HttpStatusCode.OK, jsonHeader)
+        }
+        val store = FakeTokenStore(access = "a", app = "apk_x")
+        val fcm = FakeFcmTokenSource("fcm-1")
+        val mgr = manager(store, fcm, engine, scope)
+        assertTrue(mgr.syncAuthenticatedDevice().isSuccess)
+        assertEquals("fcm-1", store.getLastPushToken())
+
+        var resync: Deferred<Result<DeviceConnectionState?>>? = null
+        mgr.startObservingTokenChanges { resync = scope.async { mgr.syncAuthenticatedDevice() } }
+        fcm.emit("fcm-2")
+        runCurrent()
+        assertTrue(resync!!.await().isSuccess)
+
+        assertTrue(bodies.last().contains("\"previous_push_token\":\"fcm-1\""), bodies.last())
+        assertEquals("fcm-2", store.getLastPushToken())
+    }
+
+    @Test
+    fun logoutForgetsTheRegisteredPushToken() = runTest {
+        val engine = MockEngine { respond(IDENTIFY_NO_LINKS, HttpStatusCode.OK, jsonHeader) }
+        val store = FakeTokenStore(access = "a", app = "apk_x", lastPush = "fcm")
+
+        manager(store, FakeFcmTokenSource("fcm"), engine).deregisterForLogout()
+
+        assertNull(store.getLastPushToken(), "the next account must not inherit this Device")
     }
 
     @Test
