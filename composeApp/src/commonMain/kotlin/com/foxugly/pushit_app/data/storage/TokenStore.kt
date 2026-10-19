@@ -15,6 +15,10 @@ interface TokenStore {
     fun getEnrolmentCode(): String?
     fun setEnrolmentCode(code: String?)
     fun clearAuthTokens()
+    /** The FCM token last registered with the server (identify/link), so an FCM
+     * rotation can hand the existing Device over (`previous_push_token`). */
+    fun getLastPushToken(): String?
+    fun setLastPushToken(token: String?)
 }
 
 /**
@@ -38,6 +42,8 @@ class TokenStorageStore(private val storage: TokenStorage) : TokenStore, InboxSt
     override fun getEnrolmentCode(): String? = storage.getEnrolmentCode()
     override fun setEnrolmentCode(code: String?) = storage.setEnrolmentCode(code)
     override fun clearAuthTokens() = storage.clearAuthTokens()
+    override fun getLastPushToken(): String? = storage.getLastPushToken()
+    override fun setLastPushToken(token: String?) = storage.setLastPushToken(token)
     override fun getNotificationState(): String? = storage.getNotificationState()
     override fun setNotificationState(json: String?) = storage.setNotificationState(json)
 }

@@ -88,26 +88,51 @@ class PushItApi(
         client.post("auth/login/") { setBody(request) }
     }
 
-    suspend fun register(request: RegisterRequest): Result<UserProfile> = apiCall {
-        client.post("auth/register/") { setBody(request) }
-    }
+    /**
+     * Ask the server to e-mail a fresh confirmation link (login answered 403
+     * `email_not_verified`). Anonymous; always 200 whether or not the address
+     * matched (anti-enumeration), 429 `throttled` when rate-limited.
+     */
+    suspend fun resendConfirmationEmail(email: String): Result<Unit> = runCatching {
+        val response = client.post("auth/email/resend/") { setBody(EmailResendRequest(email)) }
+        logResponse("resendConfirmationEmail", response)
+        if (!response.status.isSuccess()) {
+            throw response.toApiException("resendConfirmationEmail")
+        }
+    }.mapTransportErrors()
 
     suspend fun refresh(request: RefreshRequest): Result<RefreshResponse> = apiCall {
         client.post("auth/refresh/") { setBody(request) }
     }
 
-    suspend fun logout(refreshToken: String): Result<Unit> = runCatching {
-        val response = client.post("auth/logout/") { setBody(RefreshRequest(refreshToken)) }
+    /**
+     * Blacklist the stored refresh token server-side. `auth/logout/` needs BOTH a
+     * valid access token (IsAuthenticated) and the refresh token in the body, so
+     * with an expired access token we refresh first and replay — otherwise the
+     * refresh token would stay valid on the server after the user signed out.
+     * The refresh rotates the refresh token, so each attempt re-reads the CURRENT
+     * one from storage. If the refresh token itself is refused, the session is
+     * already dead server-side: nothing left to revoke, so that counts as success
+     * (and does not fire [onAuthFailure] — we are signing out anyway).
+     */
+    suspend fun logout(): Result<Unit> = runCatching {
+        val staleAccessToken = tokenStorage.getAccessToken()
+        val firstRefresh = tokenStorage.getRefreshToken() ?: return@runCatching
+        var response = client.post("auth/logout/") { setBody(RefreshRequest(firstRefresh)) }
         logResponse("logout", response)
-        // A 401 here means the session is already gone server-side (expired/blacklisted
-        // access token). We're tearing the session down anyway, so treat it as success
-        // instead of letting it bubble up — a recoverable-but-expired session must not
-        // turn logout into a scary error, and there's nothing to refresh-and-retry for
-        // a token we're about to discard. Other non-2xx (5xx) still surface.
-        if (!response.status.isSuccess() && response.status != HttpStatusCode.Unauthorized) {
+        if (response.status == HttpStatusCode.Unauthorized) {
+            AppLogger.info(tag, "Logout got 401, refreshing the access token before revoking")
+            if (!authInterceptor.refreshIfNeeded(client, staleAccessToken, notifyAuthFailure = false)) {
+                return@runCatching
+            }
+            val rotated = tokenStorage.getRefreshToken() ?: return@runCatching
+            response = client.post("auth/logout/") { setBody(RefreshRequest(rotated)) }
+            logResponse("retry logout", response)
+        }
+        if (!response.status.isSuccess()) {
             throw response.toApiException("logout")
         }
-    }
+    }.mapTransportErrors()
 
     suspend fun getMe(): Result<UserProfile> = apiCall {
         client.get("auth/me/")
@@ -220,9 +245,15 @@ class PushItApi(
         val response = block()
         logResponse(name, response)
         if (response.status == HttpStatusCode.Unauthorized) {
+            // An enrolment code refused on devices/link/ is NOT a session problem:
+            // refreshing (and rotating) the JWT pair would not help and the replay
+            // would fail the same way. The server sends 403 for these now, but older
+            // servers answered 401 with the same `app_token_*` codes.
+            val unauthorized = response.toApiException("auth $name")
+            if (unauthorized.isEnrolmentCodeRejection()) throw unauthorized
             AppLogger.warn(tag, "Unauthorized response received, attempting token refresh")
             if (!authInterceptor.refreshIfNeeded(client, staleAccessToken)) {
-                throw response.toApiException("auth $name")
+                throw unauthorized
             }
             // Replay the ORIGINAL request: same verb + body, fresh token attached
             // by the AuthInterceptor's onRequest. (The old code rebuilt a bare GET
@@ -239,10 +270,14 @@ class PushItApi(
             }
             response.decodeBody<T>(name, json, includeRawBodies)
         }
-    }.recoverCatching { throwable ->
-        // Surface transport failures as NetworkException so the UI can tell
-        // "offline / timed out" apart from an HTTP or decoding error. Re-throwing
-        // keeps the Result a failure (recoverCatching wraps the thrown value).
+    }.mapTransportErrors().onFailure {
+        AppLogger.error(tag, "API call failed: ${it.message}", it)
+    }
+
+    // Surface transport failures as NetworkException so the UI can tell
+    // "offline / timed out" apart from an HTTP or decoding error. Re-throwing
+    // keeps the Result a failure (recoverCatching wraps the thrown value).
+    private fun <T> Result<T>.mapTransportErrors(): Result<T> = recoverCatching { throwable ->
         throw when (throwable) {
             is HttpRequestTimeoutException,
             is ConnectTimeoutException,
@@ -250,8 +285,6 @@ class PushItApi(
             is IOException -> NetworkException(NetworkErrorKind.OFFLINE, "Could not reach the server.", throwable)
             else -> throwable
         }
-    }.onFailure {
-        AppLogger.error(tag, "API call failed: ${it.message}", it)
     }
 
     private fun logResponse(operation: String, response: HttpResponse) {
@@ -366,6 +399,17 @@ class ApiException(
         }
     }
 )
+
+/**
+ * True when the server refused an enrolment code on `devices/link/` (or
+ * `devices/unlink/`): an `app_token_*` error code with HTTP 403 (current
+ * server) or 401 (servers before the 403 switch). Never a JWT/session failure,
+ * so it must not trigger a token refresh, and a stored code that gets it is dead.
+ */
+fun Throwable.isEnrolmentCodeRejection(): Boolean =
+    this is ApiException &&
+        (statusCode == 401 || statusCode == 403) &&
+        errorCode?.startsWith("app_token_") == true
 
 /** A transport-level failure (offline, DNS, timeout) — distinct from an HTTP
  * status error ([ApiException]) so the UI can show "check your connection". */

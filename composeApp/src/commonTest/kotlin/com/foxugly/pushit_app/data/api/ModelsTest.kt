@@ -40,13 +40,18 @@ class ModelsTest {
     }
 
     @Test
-    fun registerRequestOmitsNullTurnstileToken() {
-        // With explicitNulls=false the absent captcha token must NOT be serialized
-        // (DRF rejects an explicit null on the non-null turnstile_token field).
+    fun identifyRequestOmitsPreviousPushTokenUnlessRotated() {
+        // With explicitNulls=false the absent previous_push_token must NOT be
+        // serialized; when FCM rotated the token it is sent next to the new one.
         val encoder = Json { encodeDefaults = true; explicitNulls = false }
-        val body = encoder.encodeToString(RegisterRequest(email = "a@b.test", password = "secret123"))
-        assertTrue(!body.contains("turnstile_token"), "null turnstile_token must be omitted: $body")
-        assertTrue(!body.contains("username"), "username is no longer part of the contract: $body")
+        val plain = encoder.encodeToString(
+            DeviceIdentifyRequest(pushToken = "new", platform = "android", deviceName = "Pixel")
+        )
+        assertTrue(!plain.contains("previous_push_token"), "null previous_push_token must be omitted: $plain")
+        val rotated = encoder.encodeToString(
+            DeviceIdentifyRequest(pushToken = "new", platform = "android", deviceName = "Pixel", previousPushToken = "old")
+        )
+        assertTrue(rotated.contains("\"previous_push_token\":\"old\""), rotated)
     }
 
     @Test

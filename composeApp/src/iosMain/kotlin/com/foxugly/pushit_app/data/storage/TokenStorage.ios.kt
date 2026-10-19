@@ -83,6 +83,11 @@ actual class TokenStorage {
     }
 
     // --- Non-secret preferences: NSUserDefaults ---
+    // The FCM token is a device address, not a credential (it only lets a sender
+    // holding the Firebase server key push to this device).
+    actual fun getLastPushToken(): String? = defaults.stringForKey(KEY_LAST_PUSH_TOKEN)
+    actual fun setLastPushToken(token: String?) = defaultsSet(KEY_LAST_PUSH_TOKEN, token)
+
     actual fun getLanguage(): String? = defaults.stringForKey(KEY_LANGUAGE)
     actual fun setLanguage(code: String?) = defaultsSet(KEY_LANGUAGE, code)
 
@@ -189,6 +194,7 @@ actual class TokenStorage {
 
         // NSUserDefaults keys (non-secret).
         private const val KEY_LANGUAGE = "pushit_ui_language"
+        private const val KEY_LAST_PUSH_TOKEN = "pushit_last_push_token"
         private const val KEY_NOTIF_STATE = "pushit_notification_state"
     }
 }

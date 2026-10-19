@@ -11,6 +11,11 @@ expect class TokenStorage {
     fun getEnrolmentCode(): String?
     fun setEnrolmentCode(code: String?)
     fun clearAuthTokens()
+    // The FCM token last registered with the server. Kept so that, when FCM
+    // rotates the token, identify can send it as `previous_push_token` and the
+    // server moves the existing Device (links + inbox history) to the new one.
+    fun getLastPushToken(): String?
+    fun setLastPushToken(token: String?)
     // UI language preference (lowercase ISO code, e.g. "fr"). Local-only: the
     // mobile API has no language PATCH endpoint, so this is never sent server-side.
     fun getLanguage(): String?

@@ -76,14 +76,27 @@ State-driven manual navigation in `App.kt` using `sealed class Screen` + `when`.
 
 1. Check `TokenStorage` for valid access token → `NotificationList`
 2. Else try refresh token → on success `NotificationList`, on failure `Login`
-3. After reaching `NotificationList`, `DeviceLinkManager.tryLink()` registers the FCM token with the backend via `POST /devices/link/` (requires app token from QR scan)
+3. After reaching `NotificationList`, `DeviceLinkManager.syncAuthenticatedDevice()` identifies the device
+   (`POST /devices/identify/`) and, if it is linked to no app yet and an enrolment code is stored, links it
+   (`POST /devices/link/`). A stored code the server refuses (403 `app_token_*`) is forgotten, not retried.
 
 ### Backend API
 
 Base URL: `https://pushit-api.foxugly.com/api/v1/` (prod-only). Passed into `PushItApi` from `App()`.
 
-- JWT auth: login, register, refresh, logout, me
-- Device registration: `POST /devices/link/` with `X-App-Token` header
+- JWT auth: login, refresh, logout, me (+ `auth/email/resend/`). No in-app registration: sign-up is
+  web-only (captcha). Login 403 `email_not_verified` → "confirm your e-mail" + resend action; 429 → too many attempts.
+- Logout (`auth/logout/`) needs a valid access token AND the refresh token in the body: on 401 the app
+  refreshes first, then replays with the (rotated) refresh token so it really gets blacklisted.
+- Device registration: `POST /devices/link/` with the enrolment code in the **`app_token` JSON body field**
+  (no header). Only `apk_` enrolment codes are accepted by the scanner; an `apt_` value is a *send* token
+  and is refused with an explanation.
+- Enrolment-code refusals (`app_token_*` codes; 403 — older servers sent 401) are never a session
+  problem: `apiCall` does **not** refresh/replay on them, and the UI shows a translated message.
+- FCM token rotation: the last token registered with the server is persisted (`TokenStore.lastPushToken`).
+  When FCM rotates it, identify (and link) send the new `push_token` plus `previous_push_token` = the old
+  one; the server moves the existing Device to the new token, keeping all its app links and inbox history.
+  The stored token is updated only after the server accepted it, and cleared on logout/account deletion.
 - Notifications: paginated list, detail, stats (read-only)
 
 All API calls return `Result<T>` via a shared `apiCall` helper.

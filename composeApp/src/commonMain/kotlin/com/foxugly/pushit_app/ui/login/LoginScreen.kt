@@ -20,7 +20,7 @@ import com.foxugly.pushit_app.ui.components.ErrorBanner
 import com.foxugly.pushit_app.ui.components.PasswordHiddenIcon
 import com.foxugly.pushit_app.ui.components.PasswordVisibleIcon
 import com.foxugly.pushit_app.ui.i18n.LocalStrings
-import com.foxugly.pushit_app.ui.i18n.errorText
+import com.foxugly.pushit_app.ui.i18n.loginErrorText
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import pushit_app.composeapp.generated.resources.Res
@@ -37,6 +37,10 @@ fun LoginScreen(
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Set after a 403 `email_not_verified`: offers the "resend confirmation" action.
+    var emailNotVerified by remember { mutableStateOf(false) }
+    var isResending by remember { mutableStateOf(false) }
+    var info by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val strings = LocalStrings.current
 
@@ -82,10 +86,40 @@ fun LoginScreen(
             ErrorBanner(it)
             Spacer(Modifier.height(16.dp))
         }
+        if (emailNotVerified) {
+            OutlinedButton(
+                onClick = {
+                    scope.launch {
+                        isResending = true
+                        authRepository.resendConfirmationEmail(email).fold(
+                            onSuccess = {
+                                error = null
+                                info = strings.confirmationResent
+                            },
+                            onFailure = { throwable -> error = strings.loginErrorText(throwable) },
+                        )
+                        isResending = false
+                    }
+                },
+                enabled = !isResending && email.isNotBlank(),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(strings.resendConfirmation)
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+        info?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.height(16.dp))
+        }
 
         OutlinedTextField(
             value = email,
-            onValueChange = { email = it; error = null },
+            onValueChange = { email = it; error = null; info = null; emailNotVerified = false },
             label = { Text(strings.email) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             singleLine = true,
@@ -95,7 +129,7 @@ fun LoginScreen(
 
         OutlinedTextField(
             value = password,
-            onValueChange = { password = it; error = null },
+            onValueChange = { password = it; error = null; info = null },
             label = { Text(strings.password) },
             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             trailingIcon = {
@@ -117,18 +151,14 @@ fun LoginScreen(
                 scope.launch {
                     isLoading = true
                     error = null
+                    info = null
+                    emailNotVerified = false
                     authRepository.login(email, password).fold(
                         onSuccess = { onLoginSuccess() },
-                        // A failed login is almost always bad credentials; show a
-                        // friendly message instead of the raw API error. Keep the
-                        // server-error and transport (offline/timeout) cases distinct.
                         onFailure = { throwable ->
-                            error = when {
-                                throwable is ApiException && throwable.statusCode in 500..599 ->
-                                    strings.serverError
-                                throwable is ApiException -> strings.invalidCredentials
-                                else -> strings.errorText(throwable, strings.loginFailed)
-                            }
+                            emailNotVerified = throwable is ApiException &&
+                                throwable.errorCode == AuthRepository.ERROR_EMAIL_NOT_VERIFIED
+                            error = strings.loginErrorText(throwable)
                         },
                     )
                     isLoading = false

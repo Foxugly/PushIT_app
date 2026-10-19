@@ -9,6 +9,7 @@ internal class FakeTokenStore(
     private var access: String? = null,
     private var refresh: String? = null,
     private var app: String? = null,
+    private var lastPush: String? = null,
 ) : TokenStore {
     var cleared = false
         private set
@@ -20,6 +21,8 @@ internal class FakeTokenStore(
     override fun getEnrolmentCode() = app
     override fun setEnrolmentCode(code: String?) { app = code }
     override fun clearAuthTokens() { access = null; refresh = null; cleared = true }
+    override fun getLastPushToken() = lastPush
+    override fun setLastPushToken(token: String?) { lastPush = token }
 }
 
 /** In-memory [InboxStateStore] for tests. */
