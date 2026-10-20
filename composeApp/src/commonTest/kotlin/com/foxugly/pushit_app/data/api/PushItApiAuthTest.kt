@@ -19,6 +19,8 @@ import io.ktor.utils.io.errors.IOException
 
 private val jsonHeader = headersOf(HttpHeaders.ContentType, "application/json")
 
+private const val ME_JSON = """{"id":1,"email":"a@b.test"}"""
+
 class PushItApiAuthTest {
 
     @Test
@@ -100,9 +102,96 @@ class PushItApiAuthTest {
 
         val result = api.getMe()
 
-        assertTrue(result.isFailure)
+        assertIs<SessionExpiredException>(result.exceptionOrNull())
         assertTrue(authFailed, "onAuthFailure must fire when refresh fails")
         assertTrue(store.cleared, "tokens must be cleared on refresh failure")
+        api.close()
+    }
+
+    @Test
+    fun unauthorizedThenSuccessfulRefreshRetriesExactlyOnce() = runTest {
+        val store = FakeTokenStore(access = "stale", refresh = "r")
+        var meCalls = 0
+        var refreshCalls = 0
+        val engine = MockEngine { request ->
+            if (request.url.encodedPath.endsWith("/auth/refresh/")) {
+                refreshCalls++
+                respond("""{"access":"fresh","refresh":"r2"}""", HttpStatusCode.OK, jsonHeader)
+            } else {
+                meCalls++
+                if (request.headers[HttpHeaders.Authorization] == "Bearer fresh") {
+                    respond(ME_JSON, HttpStatusCode.OK, jsonHeader)
+                } else {
+                    respond("", HttpStatusCode.Unauthorized)
+                }
+            }
+        }
+        val api = PushItApi(store, baseUrl = "https://test/api/v1/", engine = engine)
+
+        val result = api.getMe()
+
+        assertTrue(result.isSuccess, "getMe should succeed after refresh: ${result.exceptionOrNull()}")
+        assertEquals(1, refreshCalls, "one refresh attempt")
+        assertEquals(2, meCalls, "original call + exactly one replay")
+        assertEquals("r2", store.getRefreshToken())
+        api.close()
+    }
+
+    @Test
+    fun replayStillUnauthorizedIsNotRetriedAgain() = runTest {
+        val store = FakeTokenStore(access = "stale", refresh = "r")
+        var meCalls = 0
+        var refreshCalls = 0
+        val engine = MockEngine { request ->
+            if (request.url.encodedPath.endsWith("/auth/refresh/")) {
+                refreshCalls++
+                respond("""{"access":"fresh"}""", HttpStatusCode.OK, jsonHeader)
+            } else {
+                meCalls++
+                respond("", HttpStatusCode.Unauthorized)
+            }
+        }
+        val api = PushItApi(store, baseUrl = "https://test/api/v1/", engine = engine)
+
+        assertTrue(api.getMe().isFailure)
+        assertEquals(1, refreshCalls)
+        assertEquals(2, meCalls, "no refresh loop: one replay only")
+        api.close()
+    }
+
+    @Test
+    fun refreshEndpoint401IsNotItselfRefreshed() = runTest {
+        val store = FakeTokenStore(access = "stale", refresh = "dead")
+        var refreshCalls = 0
+        var authFailed = false
+        val engine = MockEngine {
+            refreshCalls++
+            respond("""{"code":"token_not_valid"}""", HttpStatusCode.Unauthorized, jsonHeader)
+        }
+        val api = PushItApi(store, baseUrl = "https://test/api/v1/", engine = engine)
+        api.onAuthFailure = { authFailed = true }
+
+        val result = api.refresh(RefreshRequest("dead"))
+
+        assertEquals(401, (result.exceptionOrNull() as? ApiException)?.statusCode)
+        assertEquals(1, refreshCalls, "auth/refresh/ must not trigger a second refresh")
+        assertFalse(authFailed, "the caller (startup) decides, not the interceptor")
+        api.close()
+    }
+
+    @Test
+    fun imageGetAfterRefusedRefreshIsSessionExpired() = runTest {
+        val store = FakeTokenStore(access = "stale", refresh = "dead")
+        var authFailed = false
+        val engine = MockEngine { respond("", HttpStatusCode.Unauthorized) }
+        val api = PushItApi(store, baseUrl = "https://test/api/v1/", engine = engine)
+        api.onAuthFailure = { authFailed = true }
+
+        val result = api.getImageBytes("https://test/media/logo.png")
+
+        assertIs<SessionExpiredException>(result.exceptionOrNull())
+        assertTrue(authFailed)
+        assertTrue(store.cleared)
         api.close()
     }
 

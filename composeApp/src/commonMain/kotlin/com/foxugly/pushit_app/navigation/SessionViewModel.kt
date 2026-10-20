@@ -27,6 +27,14 @@ class SessionViewModel(private val authRepository: AuthRepository) {
     /** Localized, dismissible error banner text (set by the caller with i18n). */
     var runtimeError by mutableStateOf<String?>(null)
 
+    /**
+     * True after a dead session sent the user back to Login (refresh token refused
+     * at startup or on a later call). The login screen shows a discreet "session
+     * expired" note — never an error dialog. Cleared by any [resetTo].
+     */
+    var sessionExpired by mutableStateOf(false)
+        private set
+
     // Real back stack (a single "previous" screen lost history on 2-hop nav).
     private val backStack = mutableStateListOf<Screen>()
 
@@ -49,7 +57,18 @@ class SessionViewModel(private val authRepository: AuthRepository) {
     fun resetTo(screen: Screen) {
         backStack.clear()
         runtimeError = null
+        sessionExpired = false
         currentScreen = screen
+    }
+
+    /**
+     * The server refused the refresh token: tokens are already cleared. Go to
+     * Login without an error dialog, flagging [sessionExpired] for the discreet note.
+     */
+    fun expireSession() {
+        AppLogger.info(tag, "Session expired; back to login")
+        resetTo(Screen.Login)
+        sessionExpired = true
     }
 
     /**
@@ -59,7 +78,13 @@ class SessionViewModel(private val authRepository: AuthRepository) {
      */
     suspend fun start(localizeError: (Throwable) -> String?) {
         AppLogger.info(tag, "Startup flow started")
-        runCatching { currentScreen = resolveStartupRoute() }
+        val hadSession = authRepository.isAuthenticated() || authRepository.hasRefreshToken()
+        runCatching {
+            val route = resolveStartupRoute()
+            // A stored session that resolves to Login was refused by the server
+            // (refresh 401/403): a discreet note, not an error.
+            if (route == Screen.Login && hadSession) expireSession() else currentScreen = route
+        }
             .onFailure {
                 AppLogger.error(tag, "Startup flow failed", it)
                 runtimeError = localizeError(it)

@@ -1,9 +1,11 @@
 package com.foxugly.pushit_app.ui.i18n
 
 import com.foxugly.pushit_app.data.api.ApiException
+import com.foxugly.pushit_app.data.api.SessionExpiredException
 import com.foxugly.pushit_app.data.repository.AuthRepository
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /** Login and enrolment-code error messages (flow audit 2026-10-19). */
@@ -51,5 +53,12 @@ class FlowErrorTextTest {
             messages.forEach { assertTrue(it.isNotBlank()) }
             assertEquals(messages.size, messages.toSet().size, "each language needs its own text: $messages")
         }
+    }
+
+    @Test
+    fun expiredSessionRaisesNoErrorMessage() {
+        // The raw 401 `token_not_valid` body must never reach an error dialog.
+        val expired = SessionExpiredException(ApiException(401, "auth getMe", "token_not_valid", "token_not_valid"))
+        assertNull(en.errorText(expired, "fallback"))
     }
 }

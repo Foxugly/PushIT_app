@@ -79,9 +79,11 @@ fun App(
     LaunchedEffect(api) {
         api.onAuthFailure = {
             AppLogger.warn(TAG, "Authentication failure callback received")
-            // Explain the eject rather than silently bouncing to the login screen.
-            session.runtimeError = strings.sessionExpired
-            session.resetTo(Screen.Login)
+            // Refresh token refused: back to Login with a discreet "session expired"
+            // note on that screen — no error dialog (OPERATIONS.md §3.25). The
+            // failed call itself surfaces SessionExpiredException, which errorText
+            // maps to null, so no screen raises a dialog either.
+            session.expireSession()
         }
     }
 
@@ -186,6 +188,7 @@ fun App(
                 when (screen) {
                     Screen.Login -> LoginScreen(
                         authRepository = authRepository,
+                        notice = if (session.sessionExpired) strings.sessionExpired else null,
                         onLoginSuccess = ::onLoginOrRegisterSuccess,
                     )
                     Screen.QrScanner -> QrScannerScreen(
