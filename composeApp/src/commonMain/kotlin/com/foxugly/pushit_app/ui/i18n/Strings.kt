@@ -4,6 +4,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import com.foxugly.pushit_app.data.api.ApiException
 import com.foxugly.pushit_app.data.api.NetworkErrorKind
 import com.foxugly.pushit_app.data.api.NetworkException
+import com.foxugly.pushit_app.data.api.SessionExpiredException
 import com.foxugly.pushit_app.data.api.isEnrolmentCodeRejection
 import com.foxugly.pushit_app.data.repository.AuthRepository
 import com.foxugly.pushit_app.platform.formatLocalShort
@@ -169,6 +170,8 @@ fun Strings.loginErrorText(throwable: Throwable): String? = when {
 
 fun Strings.errorText(throwable: Throwable, fallback: String): String? = when {
     throwable is kotlin.coroutines.cancellation.CancellationException -> null
+    // Dead session: the app is already back on Login — no error dialog.
+    throwable is SessionExpiredException -> null
     throwable.isEnrolmentCodeRejection() -> enrolmentCodeErrorText((throwable as ApiException).errorCode)
     throwable is NetworkException && throwable.kind == NetworkErrorKind.TIMEOUT -> networkTimeout
     throwable is NetworkException -> networkOffline

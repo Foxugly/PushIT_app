@@ -84,7 +84,8 @@ class PushItApi(
         set(value) { authInterceptor.onAuthFailure = value }
 
     // --- Auth ---
-    suspend fun login(request: LoginRequest): Result<LoginResponse> = apiCall {
+    // A 401 here means wrong credentials, not an expired session: no refresh/replay.
+    suspend fun login(request: LoginRequest): Result<LoginResponse> = apiCall(refreshOnUnauthorized = false) {
         client.post("auth/login/") { setBody(request) }
     }
 
@@ -101,7 +102,10 @@ class PushItApi(
         }
     }.mapTransportErrors()
 
-    suspend fun refresh(request: RefreshRequest): Result<RefreshResponse> = apiCall {
+    // A 401 here is the refresh token itself being refused: the caller decides
+    // (AuthRepository.tryRefresh clears the session). Refreshing again from inside
+    // apiCall would POST auth/refresh/ a second time with the same dead token.
+    suspend fun refresh(request: RefreshRequest): Result<RefreshResponse> = apiCall(refreshOnUnauthorized = false) {
         client.post("auth/refresh/") { setBody(request) }
     }
 
@@ -220,9 +224,10 @@ class PushItApi(
         var response = client.get(url)
         if (response.status == HttpStatusCode.Unauthorized) {
             AppLogger.warn(tag, "Image GET got 401, attempting token refresh")
-            if (authInterceptor.refreshIfNeeded(client, staleAccessToken)) {
-                response = client.get(url)
+            if (!authInterceptor.refreshIfNeeded(client, staleAccessToken)) {
+                throw SessionExpiredException(response.toApiException("getImageBytes"))
             }
+            response = client.get(url)
         }
         if (!response.status.isSuccess()) {
             throw response.toApiException("getImageBytes")
@@ -235,7 +240,10 @@ class PushItApi(
     // few non-JSON cases like getImageBytes, replicate its 401 → refreshIfNeeded →
     // replay contract). Bypassing it means a recoverable expired session is treated
     // as a hard failure instead of transparently refreshing.
+    // [refreshOnUnauthorized] = false for the anonymous auth endpoints (login,
+    // refresh) whose 401 is an answer, not an expired access token.
     private suspend inline fun <reified T> apiCall(
+        refreshOnUnauthorized: Boolean = true,
         crossinline block: suspend () -> HttpResponse,
     ): Result<T> = runCatching<T> {
         val name = T::class.simpleName ?: "unknown"
@@ -244,7 +252,7 @@ class PushItApi(
         val staleAccessToken = tokenStorage.getAccessToken()
         val response = block()
         logResponse(name, response)
-        if (response.status == HttpStatusCode.Unauthorized) {
+        if (refreshOnUnauthorized && response.status == HttpStatusCode.Unauthorized) {
             // An enrolment code refused on devices/link/ is NOT a session problem:
             // refreshing (and rotating) the JWT pair would not help and the replay
             // would fail the same way. The server sends 403 for these now, but older
@@ -253,7 +261,11 @@ class PushItApi(
             if (unauthorized.isEnrolmentCodeRejection()) throw unauthorized
             AppLogger.warn(tag, "Unauthorized response received, attempting token refresh")
             if (!authInterceptor.refreshIfNeeded(client, staleAccessToken)) {
-                throw unauthorized
+                // The refresh token was refused (or there is none): the session is
+                // over, onAuthFailure already sent the user to Login. Surface a
+                // dedicated exception so screens stay silent instead of showing the
+                // server's raw `token_not_valid` body.
+                throw SessionExpiredException(unauthorized)
             }
             // Replay the ORIGINAL request: same verb + body, fresh token attached
             // by the AuthInterceptor's onRequest. (The old code rebuilt a bare GET
@@ -415,6 +427,15 @@ fun Throwable.isEnrolmentCodeRejection(): Boolean =
  * status error ([ApiException]) so the UI can show "check your connection". */
 /** Transport failure kind, so the UI can show a localized message per case. */
 enum class NetworkErrorKind { OFFLINE, TIMEOUT }
+
+/**
+ * An authenticated call got a 401 and the refresh token was then refused (401/403)
+ * or missing: tokens are cleared and [PushItApi.onAuthFailure] has fired. Not an
+ * error to show — the UI goes back to Login (at most a discreet "session expired"
+ * note). Network errors and 5xx on refresh never produce this: they keep the session.
+ */
+class SessionExpiredException(cause: ApiException) :
+    Exception("Session expired, sign in again.", cause)
 
 class NetworkException(
     val kind: NetworkErrorKind,

@@ -70,12 +70,12 @@ State-driven manual navigation in `App.kt` using `sealed class Screen` + `when`.
 
 ### Auth Flow
 
-`AuthInterceptor` (Ktor client plugin) attaches `Bearer` token to requests for the API host only (never another origin), except `/auth/*`. On 401, `apiCall` calls `AuthInterceptor.refreshIfNeeded()` (single refresh under `refreshMutex`, with a guard that skips re-refreshing when a concurrent call already rotated the token) and then **replays the original request lambda** — preserving the verb and body, with the fresh token re-attached. If the server rejects the refresh token (401/403), tokens are cleared and `onAuthFailure` navigates to Login; a transport error or 5xx on refresh keeps the session (offline must not sign out). Logout unlinks the device from its apps (`devices/unlink-app/`, best effort) before revoking the refresh token. Transport failures (timeout/offline) surface as `NetworkException`, distinct from HTTP `ApiException`.
+`AuthInterceptor` (Ktor client plugin) attaches `Bearer` token to requests for the API host only (never another origin), except `/auth/*`. On 401, `apiCall` calls `AuthInterceptor.refreshIfNeeded()` (single refresh under `refreshMutex`, with a guard that skips re-refreshing when a concurrent call already rotated the token) and then **replays the original request lambda** — preserving the verb and body, with the fresh token re-attached. If the server rejects the refresh token (401/403), tokens are cleared, `onAuthFailure` calls `SessionViewModel.expireSession()` (Login + a discreet "session expired" note, **no error dialog**) and the failed call surfaces `SessionExpiredException`, which `errorText` maps to `null`; a transport error or 5xx on refresh keeps the session (offline must not sign out) — OPERATIONS.md §3.25. `login` and `refresh` themselves never go through the 401→refresh→replay path. Logout unlinks the device from its apps (`devices/unlink-app/`, best effort) before revoking the refresh token. Transport failures (timeout/offline) surface as `NetworkException`, distinct from HTTP `ApiException`.
 
 ### Startup Flow (in App.kt)
 
 1. Check `TokenStorage` for valid access token → `NotificationList`
-2. Else try refresh token → on success `NotificationList`, on failure `Login`
+2. Else try refresh token → on success (or transient failure: offline/5xx, session kept) `NotificationList`; refused (401/403) → tokens cleared, `Login` with the discreet session-expired note
 3. After reaching `NotificationList`, `DeviceLinkManager.syncAuthenticatedDevice()` identifies the device
    (`POST /devices/identify/`) and, if it is linked to no app yet and an enrolment code is stored, links it
    (`POST /devices/link/`). A stored code the server refuses (403 `app_token_*`) is forgotten, not retried.

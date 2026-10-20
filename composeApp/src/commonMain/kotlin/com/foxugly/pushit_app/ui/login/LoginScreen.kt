@@ -31,6 +31,8 @@ import pushit_app.composeapp.generated.resources.pushit_logo
 fun LoginScreen(
     authRepository: AuthRepository,
     onLoginSuccess: () -> Unit,
+    // Discreet note shown above the form (e.g. "session expired"), not an error.
+    notice: String? = null,
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -40,7 +42,7 @@ fun LoginScreen(
     // Set after a 403 `email_not_verified`: offers the "resend confirmation" action.
     var emailNotVerified by remember { mutableStateOf(false) }
     var isResending by remember { mutableStateOf(false) }
-    var info by remember { mutableStateOf<String?>(null) }
+    var info by remember(notice) { mutableStateOf(notice) }
     val scope = rememberCoroutineScope()
     val strings = LocalStrings.current
 

@@ -13,7 +13,10 @@ import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import io.ktor.utils.io.errors.IOException
 
 private val jsonHeader = headersOf(HttpHeaders.ContentType, "application/json")
 
@@ -105,6 +108,81 @@ class SessionViewModelTest {
         s.start { "ignored" }
         assertEquals(Screen.NotificationList, s.currentScreen)
         assertNull(s.runtimeError)
+    }
+
+    // --- stale session at startup (OPERATIONS.md §3.25) ---
+
+    @Test
+    fun startupWithExpiredAccessAndRefusedRefreshLogsOutWithoutError() = runTest {
+        var refreshCalls = 0
+        val engine = MockEngine { request ->
+            if (request.url.encodedPath.endsWith("/auth/refresh/")) refreshCalls++
+            respond(
+                """{"detail":"Token is invalid or expired","code":"token_not_valid"}""",
+                HttpStatusCode.Unauthorized, jsonHeader,
+            )
+        }
+        val store = FakeTokenStore(access = jwt(0), refresh = "dead")
+        val s = vm(store, engine)
+
+        s.start { it.message } // would surface the raw 401 body if called
+
+        assertEquals(Screen.Login, s.currentScreen)
+        assertNull(s.runtimeError, "no error dialog for a stale session")
+        assertTrue(s.sessionExpired, "discreet session-expired note on login")
+        assertTrue(store.cleared, "dead session is cleared")
+        assertEquals(1, refreshCalls, "the refresh token is tried once, not twice")
+    }
+
+    @Test
+    fun startupKeepsSessionWhenRefreshCannotReachServer() = runTest {
+        val engine = MockEngine { throw IOException("offline") }
+        val store = FakeTokenStore(access = jwt(0), refresh = "r")
+        val s = vm(store, engine)
+
+        s.start { it.message }
+
+        assertEquals(Screen.NotificationList, s.currentScreen)
+        assertFalse(store.cleared, "offline must not sign the user out")
+        assertEquals("r", store.getRefreshToken())
+        assertFalse(s.sessionExpired)
+    }
+
+    @Test
+    fun startupKeepsSessionWhenRefreshHitsServerError() = runTest {
+        val engine = MockEngine { respond("", HttpStatusCode.BadGateway) }
+        val store = FakeTokenStore(access = jwt(0), refresh = "r")
+        val s = vm(store, engine)
+
+        s.start { it.message }
+
+        assertEquals(Screen.NotificationList, s.currentScreen)
+        assertFalse(store.cleared, "a 5xx on refresh must not sign the user out")
+        assertEquals("r", store.getRefreshToken())
+        assertFalse(s.sessionExpired)
+    }
+
+    @Test
+    fun startupWithoutStoredSessionShowsNoExpiryNote() = runTest {
+        val s = vm()
+        s.start { it.message }
+        assertEquals(Screen.Login, s.currentScreen)
+        assertFalse(s.sessionExpired)
+    }
+
+    @Test
+    fun expireSessionGoesToLoginAndResetClearsTheNote() {
+        val s = vm()
+        s.navigateTo(Screen.NotificationList)
+        s.runtimeError = "boom"
+
+        s.expireSession()
+
+        assertEquals(Screen.Login, s.currentScreen)
+        assertNull(s.runtimeError)
+        assertTrue(s.sessionExpired)
+        s.resetTo(Screen.NotificationList) // e.g. after signing in again
+        assertFalse(s.sessionExpired)
     }
 
     // --- post-login routing decision ---
