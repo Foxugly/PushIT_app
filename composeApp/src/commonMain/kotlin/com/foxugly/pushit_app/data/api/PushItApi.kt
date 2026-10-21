@@ -178,6 +178,12 @@ class PushItApi(
         }
     }
 
+    // The Android APK published on the website (sideloaded, not on Play). 404 when
+    // none is published — the caller treats any failure as "no update to offer".
+    suspend fun getAndroidAppVersion(): Result<AndroidAppVersion> = apiCall {
+        client.get("devices/android-app/version/")
+    }
+
     // --- Notifications ---
     // /notifications/ (JWT) returns a bare array — the web SPA and this client
     // both consume it un-paginated (the endpoint sets pagination_class=None).

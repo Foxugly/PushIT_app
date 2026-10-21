@@ -32,9 +32,18 @@ interface InboxStateStore {
     fun setNotificationState(json: String?)
 }
 
-/** Adapts the platform [TokenStorage] to [TokenStore] + [InboxStateStore] (pure
- * commonMain — no expect/actual change, so no iOS-side risk). */
-class TokenStorageStore(private val storage: TokenStorage) : TokenStore, InboxStateStore {
+/**
+ * Persistence seam for the "new APK available" banner: the version code the user
+ * dismissed, so the banner stays hidden until a NEWER version is published.
+ */
+interface AppUpdateStateStore {
+    fun getDismissedUpdateVersionCode(): Long?
+    fun setDismissedUpdateVersionCode(versionCode: Long?)
+}
+
+/** Adapts the platform [TokenStorage] to [TokenStore] + [InboxStateStore] +
+ * [AppUpdateStateStore]. */
+class TokenStorageStore(private val storage: TokenStorage) : TokenStore, InboxStateStore, AppUpdateStateStore {
     override fun getAccessToken(): String? = storage.getAccessToken()
     override fun setAccessToken(token: String?) = storage.setAccessToken(token)
     override fun getRefreshToken(): String? = storage.getRefreshToken()
@@ -46,4 +55,8 @@ class TokenStorageStore(private val storage: TokenStorage) : TokenStore, InboxSt
     override fun setLastPushToken(token: String?) = storage.setLastPushToken(token)
     override fun getNotificationState(): String? = storage.getNotificationState()
     override fun setNotificationState(json: String?) = storage.setNotificationState(json)
+    override fun getDismissedUpdateVersionCode(): Long? =
+        storage.getDismissedUpdateVersionCode()?.toLongOrNull()
+    override fun setDismissedUpdateVersionCode(versionCode: Long?) =
+        storage.setDismissedUpdateVersionCode(versionCode?.toString())
 }

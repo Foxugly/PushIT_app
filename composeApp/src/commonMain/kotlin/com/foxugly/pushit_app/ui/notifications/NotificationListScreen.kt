@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -24,6 +25,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.foxugly.pushit_app.data.api.AndroidAppVersion
 import com.foxugly.pushit_app.data.api.Notification
 import com.foxugly.pushit_app.platform.formatLocalShort
 import com.foxugly.pushit_app.ui.components.ErrorBanner
@@ -43,6 +45,10 @@ fun NotificationListScreen(
     onAddApplication: () -> Unit,
     onRefreshLinkedApps: suspend () -> Unit = {},
     refreshTrigger: Int = 0,
+    // Newer Android APK published on the website (null = no banner).
+    availableUpdate: AndroidAppVersion? = null,
+    onDownloadUpdate: () -> Unit = {},
+    onDismissUpdate: () -> Unit = {},
 ) {
     var error by remember { mutableStateOf<String?>(null) }
     var isInitialLoad by remember { mutableStateOf(true) }
@@ -79,6 +85,16 @@ fun NotificationListScreen(
             )
         },
     ) { paddingValues ->
+      Column(Modifier.fillMaxSize().padding(paddingValues)) {
+        availableUpdate?.let { update ->
+            UpdateBanner(
+                text = strings.updateAvailable.replace("{v}", update.versionName),
+                downloadLabel = strings.updateDownload,
+                dismissLabel = strings.updateDismiss,
+                onDownload = onDownloadUpdate,
+                onDismiss = onDismissUpdate,
+            )
+        }
         PullToRefreshBox(
             isRefreshing = inbox.loading,
             onRefresh = {
@@ -88,7 +104,7 @@ fun NotificationListScreen(
                 }
             },
             state = pullToRefreshState,
-            modifier = Modifier.fillMaxSize().padding(paddingValues),
+            modifier = Modifier.fillMaxWidth().weight(1f),
         ) {
             when {
                 isInitialLoad && inbox.loading -> {
@@ -205,6 +221,39 @@ fun NotificationListScreen(
                         }
                     }
                 }
+            }
+        }
+      }
+    }
+}
+
+/** Dismissible "new version available" card above the inbox (Android APK). */
+@Composable
+private fun UpdateBanner(
+    text: String,
+    downloadLabel: String,
+    dismissLabel: String,
+    onDownload: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 4.dp, end = 4.dp),
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = onDownload) { Text(downloadLabel) }
+            IconButton(onClick = onDismiss) {
+                Icon(Icons.Default.Close, contentDescription = dismissLabel)
             }
         }
     }

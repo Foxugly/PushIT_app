@@ -98,6 +98,10 @@ Base URL: `https://pushit-api.foxugly.com/api/v1/` (prod-only). Passed into `Pus
   one; the server moves the existing Device to the new token, keeping all its app links and inbox history.
   The stored token is updated only after the server accepted it, and cleared on logout/account deletion.
 - Notifications: paginated list, detail, stats (read-only)
+- APK update banner (Android only): `GET devices/android-app/version/` (`version_code`, `version_name`,
+  `size`; 404 = none published) via `AppUpdateChecker`, throttled to once per 6 h per process, run on
+  resume of the inbox. A newer `version_code` than the installed one shows a dismissible banner whose
+  button opens `https://pushit.foxugly.com/dashboard/devices`; the dismissed code is persisted.
 
 All API calls return `Result<T>` via a shared `apiCall` helper.
 

@@ -10,6 +10,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.foxugly.pushit_app.data.api.PushItApi
 import com.foxugly.pushit_app.data.repository.AuthRepository
@@ -19,6 +20,8 @@ import com.foxugly.pushit_app.data.storage.TokenStorageStore
 import com.foxugly.pushit_app.diagnostics.AppLogger
 import com.foxugly.pushit_app.navigation.Screen
 import com.foxugly.pushit_app.navigation.SessionViewModel
+import com.foxugly.pushit_app.platform.APK_DOWNLOAD_PAGE_URL
+import com.foxugly.pushit_app.platform.AppUpdateChecker
 import com.foxugly.pushit_app.platform.DeviceLinkManager
 import com.foxugly.pushit_app.platform.FcmTokenProvider
 import com.foxugly.pushit_app.platform.FcmTokenProviderSource
@@ -63,6 +66,9 @@ fun App(
         DeviceLinkManager(api, tokenStore, FcmTokenProviderSource(fcmTokenProvider))
     }
 
+    // "New APK available" banner (Android only; installedAppVersionCode() is null on iOS).
+    val appUpdateChecker = remember(api) { AppUpdateChecker(api::getAndroidAppVersion, tokenStore) }
+
     val session = remember(authRepository) { SessionViewModel(authRepository) }
     var refreshTrigger by remember { mutableStateOf(0) }
     // UI language: a local preference (persisted in TokenStorage). When unset, the
@@ -72,6 +78,7 @@ fun App(
     }
     val strings = stringsFor(language)
     val scope = rememberCoroutineScope()
+    val uriHandler = LocalUriHandler.current
 
     // Combine internal and external refresh triggers
     val effectiveRefreshTrigger = refreshTrigger + externalRefreshTrigger
@@ -107,6 +114,9 @@ fun App(
         val screen = session.currentScreen
         if (screen == Screen.NotificationList || screen is Screen.AppFolder) {
             scope.launch { refreshLinkedApps() }
+            // Throttled to once per 6 h inside the checker; also covers start-up
+            // (the first resume after login lands on the inbox).
+            scope.launch { appUpdateChecker.checkIfDue() }
         }
         onPauseOrDispose { }
     }
@@ -232,6 +242,9 @@ fun App(
                         onAddApplication = { session.navigateTo(Screen.QrScanner) },
                         onRefreshLinkedApps = ::refreshLinkedApps,
                         refreshTrigger = effectiveRefreshTrigger,
+                        availableUpdate = appUpdateChecker.available,
+                        onDownloadUpdate = { uriHandler.openUri(APK_DOWNLOAD_PAGE_URL) },
+                        onDismissUpdate = appUpdateChecker::dismiss,
                     )
                     is Screen.AppFolder -> AppFolderScreen(
                         inbox = inbox,

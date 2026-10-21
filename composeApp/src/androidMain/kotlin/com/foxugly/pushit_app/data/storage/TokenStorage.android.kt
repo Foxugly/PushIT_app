@@ -77,6 +77,11 @@ actual class TokenStorage(context: Context) {
         writeToken(KEY_NOTIF_STATE, json)
     }
 
+    actual fun getDismissedUpdateVersionCode(): String? = readToken(KEY_DISMISSED_UPDATE)
+    actual fun setDismissedUpdateVersionCode(versionCode: String?) {
+        writeToken(KEY_DISMISSED_UPDATE, versionCode)
+    }
+
     actual fun clearAuthTokens() {
         // commit() (synchronous) so we know the removal actually persisted —
         // a silently-dropped clear could leave stale tokens on disk.
@@ -152,5 +157,6 @@ actual class TokenStorage(context: Context) {
         private const val KEY_LAST_PUSH_TOKEN = "last_push_token"
         private const val KEY_LANGUAGE = "ui_language"
         private const val KEY_NOTIF_STATE = "notification_state"
+        private const val KEY_DISMISSED_UPDATE = "dismissed_update_version_code"
     }
 }
