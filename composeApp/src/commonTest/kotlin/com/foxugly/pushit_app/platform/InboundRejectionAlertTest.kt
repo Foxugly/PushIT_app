@@ -52,6 +52,52 @@ class InboundRejectionAlertTest {
     }
 
     @Test
+    fun reasonAndSenderKeysWinOverTheText() {
+        val cases = mapOf(
+            "sender_not_allowed" to InboundRejectionReason.NOT_ALLOWED,
+            "sender_blocked" to InboundRejectionReason.BLOCKED,
+            "dmarc_failed" to InboundRejectionReason.NOT_AUTHENTICATED,
+        )
+        cases.forEach { (code, expected) ->
+            // The text says "blocklist": the explicit code must still win.
+            val data = payload("the sender is on the application's blocklist") +
+                mapOf("reason" to code, "sender_masked" to "b***@other.org")
+            val alert = parseInboundRejectionAlert(data)!!
+            assertEquals(expected, alert.reason, code)
+            assertEquals("b***@other.org", alert.maskedSender)
+        }
+    }
+
+    @Test
+    fun newKeysWorkWithoutAnyMessageText() {
+        val alert = parseInboundRejectionAlert(
+            mapOf(
+                "type" to "inbound_email_rejected",
+                "application_id" to "3",
+                "application_name" to "Shop",
+                "reason" to "dmarc_failed",
+                "sender_masked" to "c***@spoof.example",
+            ),
+        )!!
+        assertEquals(InboundRejectionReason.NOT_AUTHENTICATED, alert.reason)
+        assertEquals("c***@spoof.example", alert.maskedSender)
+        assertEquals(
+            "The anti-spoofing check (SPF/DKIM/DMARC) failed. Sender: c***@spoof.example",
+            stringsFor(AppLanguage.EN).inboundRejectionBody(alert),
+        )
+    }
+
+    @Test
+    fun unknownOrBlankNewKeysFallBackToTheText() {
+        val alert = parseInboundRejectionAlert(
+            payload("the sender is on the application's blocklist") +
+                mapOf("reason" to "some_future_code", "sender_masked" to " "),
+        )!!
+        assertEquals(InboundRejectionReason.BLOCKED, alert.reason)
+        assertEquals("a***@example.com", alert.maskedSender)
+    }
+
+    @Test
     fun missingOrOddFieldsDoNotInventData() {
         val alert = parseInboundRejectionAlert(
             mapOf("type" to "inbound_email_rejected", "application_id" to "x", "application_name" to " "),

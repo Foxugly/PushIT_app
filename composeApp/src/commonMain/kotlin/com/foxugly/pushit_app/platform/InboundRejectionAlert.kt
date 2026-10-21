@@ -16,10 +16,11 @@ enum class InboundRejectionReason { NOT_ALLOWED, BLOCKED, NOT_AUTHENTICATED, UNK
  *
  * Server data (all strings): `type=inbound_email_rejected`, `application_id`,
  * `application_name`, `title` ("PushIT: inbound e-mail refused") and `message`
- * ("Mail from <masked sender> to <app> refused: <English reason>."). There is no
- * reason code: [reason] is recognised from the English reason text, and
- * [maskedSender] (already masked by the server, e.g. `a***@example.com`) is read
- * from the same text.
+ * ("Mail from <masked sender> to <app> refused: <English reason>."). Newer servers
+ * (data-only on Android) add `reason` (`sender_not_allowed` | `sender_blocked` |
+ * `dmarc_failed`) and `sender_masked` (already masked, e.g. `a***@example.com`);
+ * those win when present. Older servers send neither: [reason] is then recognised
+ * from the English reason text and [maskedSender] read from the same text.
  */
 data class InboundRejectionAlert(
     val applicationId: Int?,
@@ -39,10 +40,20 @@ fun parseInboundRejectionAlert(data: Map<String, String>): InboundRejectionAlert
     return InboundRejectionAlert(
         applicationId = data["application_id"]?.trim()?.toIntOrNull()?.takeIf { it > 0 },
         applicationName = data["application_name"]?.trim()?.takeIf { it.isNotEmpty() },
-        reason = inboundRejectionReasonOf(message),
-        maskedSender = SENDER_PATTERN.find(message.trim())?.groupValues?.get(1),
+        reason = inboundRejectionReasonFromCode(data["reason"]) ?: inboundRejectionReasonOf(message),
+        maskedSender = data["sender_masked"]?.trim()?.takeIf { it.isNotEmpty() }
+            ?: SENDER_PATTERN.find(message.trim())?.groupValues?.get(1),
     )
 }
+
+/** Reason from the server's `reason` code, or null when absent/unknown (fall back to the text). */
+fun inboundRejectionReasonFromCode(code: String?): InboundRejectionReason? =
+    when (code?.trim()?.lowercase()) {
+        "sender_not_allowed" -> InboundRejectionReason.NOT_ALLOWED
+        "sender_blocked" -> InboundRejectionReason.BLOCKED
+        "dmarc_failed" -> InboundRejectionReason.NOT_AUTHENTICATED
+        else -> null
+    }
 
 /** Reason recognised from the server's English push text. */
 fun inboundRejectionReasonOf(message: String): InboundRejectionReason {

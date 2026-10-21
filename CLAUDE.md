@@ -99,9 +99,9 @@ Base URL: `https://pushit-api.foxugly.com/api/v1/` (prod-only). Passed into `Pus
   The stored token is updated only after the server accepted it, and cleared on logout/account deletion.
 - Notifications: paginated list, detail, stats (read-only)
 - Owner alert `type=inbound_email_rejected` (FCM data: `application_id`, `application_name`, `title`, `message`;
-  no reason code, no `Notification` row): `PushItFirebaseService` shows it on its own channel
+  + `reason`/`sender_masked` from newer servers; no `Notification` row): `PushItFirebaseService` shows it on its own channel
   `pushit_inbound_rejected` (« Mails refusés ») with a localized title/reason (`platform/InboundRejectionAlert.kt`
-  recognises the reason from the server's English text) and does not refresh the inbox. In hybrid push mode a
+  uses `reason`/`sender_masked`, else parses the English `message`) and does not refresh the inbox. With an older server in hybrid push mode a
   backgrounded app gets the server's English `notification` block rendered by the system instead.
 - APK update banner (Android only): `GET devices/android-app/version/` (`version_code`, `version_name`,
   `size`; 404 = none published) via `AppUpdateChecker`, throttled to once per 6 h per process, run on
