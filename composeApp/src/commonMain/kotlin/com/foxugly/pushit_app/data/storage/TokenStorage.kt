@@ -24,4 +24,8 @@ expect class TokenStorage {
     // blob. Local-only — the backend has no per-device read state (yet).
     fun getNotificationState(): String?
     fun setNotificationState(json: String?)
+    // Version code of the Android APK whose "new version" banner the user
+    // dismissed (decimal string). Local-only, non-secret.
+    fun getDismissedUpdateVersionCode(): String?
+    fun setDismissedUpdateVersionCode(versionCode: String?)
 }

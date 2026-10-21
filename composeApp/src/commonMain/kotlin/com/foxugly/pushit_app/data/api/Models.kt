@@ -162,3 +162,13 @@ data class NotificationStats(
     val status: String,
     val count: Int,
 )
+
+// --- Android app update ---
+
+/** `GET devices/android-app/version/`: the sideloaded APK currently published on the website. */
+@Serializable
+data class AndroidAppVersion(
+    @SerialName("version_code") val versionCode: Long,
+    @SerialName("version_name") val versionName: String,
+    val size: Long,
+)

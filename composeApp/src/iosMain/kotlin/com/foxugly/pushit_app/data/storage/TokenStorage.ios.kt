@@ -94,6 +94,9 @@ actual class TokenStorage {
     actual fun getNotificationState(): String? = defaults.stringForKey(KEY_NOTIF_STATE)
     actual fun setNotificationState(json: String?) = defaultsSet(KEY_NOTIF_STATE, json)
 
+    actual fun getDismissedUpdateVersionCode(): String? = defaults.stringForKey(KEY_DISMISSED_UPDATE)
+    actual fun setDismissedUpdateVersionCode(versionCode: String?) = defaultsSet(KEY_DISMISSED_UPDATE, versionCode)
+
     private fun defaultsSet(key: String, value: String?) {
         if (value != null) {
             defaults.setObject(value, forKey = key)
@@ -196,5 +199,6 @@ actual class TokenStorage {
         private const val KEY_LANGUAGE = "pushit_ui_language"
         private const val KEY_LAST_PUSH_TOKEN = "pushit_last_push_token"
         private const val KEY_NOTIF_STATE = "pushit_notification_state"
+        private const val KEY_DISMISSED_UPDATE = "pushit_dismissed_update_version_code"
     }
 }
