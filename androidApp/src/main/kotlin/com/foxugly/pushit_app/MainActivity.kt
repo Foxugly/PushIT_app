@@ -132,7 +132,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun readDeepLinkId(intent: Intent?): Int? =
-        intent?.getStringExtra(PushItFirebaseService.EXTRA_NOTIFICATION_ID)?.toIntOrNull()
+        PushItFirebaseService.deepLinkNotificationId(this, intent)
 
     private fun maybeRequestNotificationPermission() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
