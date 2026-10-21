@@ -188,12 +188,8 @@ class SessionViewModelTest {
     // --- post-login routing decision ---
 
     @Test
-    fun routeAfterLoginGoesToQrOnlyWhenNoLinkedAppsAndNoStoredToken() {
-        val s = vm()
-        assertEquals(Screen.QrScanner, s.routeAfterLogin(hasKnownLinkedApps = false, hasStoredAppToken = false))
-        assertEquals(Screen.NotificationList, s.routeAfterLogin(hasKnownLinkedApps = true, hasStoredAppToken = false))
-        assertEquals(Screen.NotificationList, s.routeAfterLogin(hasKnownLinkedApps = false, hasStoredAppToken = true))
-        assertEquals(Screen.NotificationList, s.routeAfterLogin(hasKnownLinkedApps = true, hasStoredAppToken = true))
+    fun routeAfterLoginAlwaysGoesToTheInboxNeverTheScanner() {
+        assertEquals(Screen.NotificationList, vm().routeAfterLogin())
     }
 
     // --- post-QR-link routing decision ---
