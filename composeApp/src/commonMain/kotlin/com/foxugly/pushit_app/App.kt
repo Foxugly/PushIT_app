@@ -10,6 +10,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.foxugly.pushit_app.data.api.PushItApi
 import com.foxugly.pushit_app.data.repository.AuthRepository
 import com.foxugly.pushit_app.data.repository.NotificationRepository
@@ -90,6 +91,24 @@ fun App(
     // Startup flow — the routing decision lives in SessionViewModel (testable).
     LaunchedEffect(session) {
         session.start { strings.errorText(it, strings.startupFailed) }
+    }
+
+    // Re-read the linked applications (names, logo URLs) without any error popup:
+    // used on pull-to-refresh and when the app comes back to the foreground. A
+    // logo URL changes with the logo's content (server-side hash), so the inbox's
+    // URL-keyed logo cache picks up a new logo by itself.
+    suspend fun refreshLinkedApps() {
+        deviceLinkManager.syncAuthenticatedDevice()
+            .onSuccess { state -> state?.let { inbox.updateLinkedApps(it.linkedApplications) } }
+            .onFailure { AppLogger.warn(TAG, "Linked apps refresh failed: ${it.message}") }
+    }
+
+    LifecycleResumeEffect(session.currentScreen) {
+        val screen = session.currentScreen
+        if (screen == Screen.NotificationList || screen is Screen.AppFolder) {
+            scope.launch { refreshLinkedApps() }
+        }
+        onPauseOrDispose { }
     }
 
     // Identify the authenticated device and link it when an enrolment code is available.
@@ -211,6 +230,7 @@ fun App(
                         onNavigateToFolder = { appId, name -> session.navigateTo(Screen.AppFolder(appId, name)) },
                         onNavigateToSettings = { session.navigateTo(Screen.Settings) },
                         onAddApplication = { session.navigateTo(Screen.QrScanner) },
+                        onRefreshLinkedApps = ::refreshLinkedApps,
                         refreshTrigger = effectiveRefreshTrigger,
                     )
                     is Screen.AppFolder -> AppFolderScreen(
