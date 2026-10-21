@@ -131,6 +131,16 @@ data class Strings(
     // Transport errors (NetworkException)
     val networkOffline: String,
     val networkTimeout: String,
+    // Owner alert: an inbound e-mail to one of the user's apps was refused
+    // (system push `inbound_email_rejected`). "{app}" / "{sender}" are replaced.
+    val inboundRejectedChannel: String,
+    val inboundRejectedTitle: String,
+    val inboundRejectedTitleNoApp: String,
+    val inboundRejectedNotAllowed: String,
+    val inboundRejectedBlocked: String,
+    val inboundRejectedNotAuthenticated: String,
+    val inboundRejectedUnknown: String,
+    val inboundRejectedFrom: String,
     // Notification status badges (lowercase backend value -> label)
     val statusLabels: Map<String, String>,
 ) {
@@ -317,6 +327,14 @@ private val FR = Strings(
     deviceLinkFailed = "Échec de l'association de l'appareil",
     networkOffline = "Impossible de joindre le serveur.",
     networkTimeout = "La requête a expiré.",
+    inboundRejectedChannel = "Mails refusés",
+    inboundRejectedTitle = "Mail refusé — {app}",
+    inboundRejectedTitleNoApp = "Mail refusé",
+    inboundRejectedNotAllowed = "L'expéditeur n'est pas autorisé à envoyer des notifications à cette application.",
+    inboundRejectedBlocked = "L'expéditeur est bloqué pour cette application.",
+    inboundRejectedNotAuthenticated = "Le contrôle anti-usurpation (SPF/DKIM/DMARC) a échoué.",
+    inboundRejectedUnknown = "Un e-mail envoyé à cette application a été refusé.",
+    inboundRejectedFrom = "Expéditeur : {sender}",
     statusLabels = mapOf(
         "pending" to "en attente",
         "scheduled" to "planifiée",
@@ -424,6 +442,14 @@ private val NL = Strings(
     deviceLinkFailed = "Koppelen van toestel mislukt",
     networkOffline = "Kan de server niet bereiken.",
     networkTimeout = "De aanvraag is verlopen.",
+    inboundRejectedChannel = "Geweigerde mails",
+    inboundRejectedTitle = "Mail geweigerd — {app}",
+    inboundRejectedTitleNoApp = "Mail geweigerd",
+    inboundRejectedNotAllowed = "De afzender mag geen meldingen naar deze applicatie sturen.",
+    inboundRejectedBlocked = "De afzender is geblokkeerd voor deze applicatie.",
+    inboundRejectedNotAuthenticated = "De controle tegen spoofing (SPF/DKIM/DMARC) is mislukt.",
+    inboundRejectedUnknown = "Een e-mail naar deze applicatie werd geweigerd.",
+    inboundRejectedFrom = "Afzender: {sender}",
     statusLabels = mapOf(
         "pending" to "in afwachting",
         "scheduled" to "gepland",
@@ -531,6 +557,14 @@ private val EN = Strings(
     deviceLinkFailed = "Device link failed",
     networkOffline = "Could not reach the server.",
     networkTimeout = "The request timed out.",
+    inboundRejectedChannel = "Refused e-mails",
+    inboundRejectedTitle = "E-mail refused — {app}",
+    inboundRejectedTitleNoApp = "E-mail refused",
+    inboundRejectedNotAllowed = "The sender is not allowed to send notifications to this application.",
+    inboundRejectedBlocked = "The sender is blocked for this application.",
+    inboundRejectedNotAuthenticated = "The anti-spoofing check (SPF/DKIM/DMARC) failed.",
+    inboundRejectedUnknown = "An e-mail sent to this application was refused.",
+    inboundRejectedFrom = "Sender: {sender}",
     statusLabels = mapOf(
         "pending" to "pending",
         "scheduled" to "scheduled",

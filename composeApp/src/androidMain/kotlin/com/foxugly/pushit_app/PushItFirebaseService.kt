@@ -15,8 +15,16 @@ import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import java.net.HttpURLConnection
 import java.net.URL
+import com.foxugly.pushit_app.data.storage.TokenStorage
 import com.foxugly.pushit_app.diagnostics.AppLogger
 import com.foxugly.pushit_app.platform.FcmTokenProvider
+import com.foxugly.pushit_app.platform.InboundRejectionAlert
+import com.foxugly.pushit_app.platform.inboundRejectionBody
+import com.foxugly.pushit_app.platform.inboundRejectionTitle
+import com.foxugly.pushit_app.platform.parseInboundRejectionAlert
+import com.foxugly.pushit_app.ui.i18n.AppLanguage
+import com.foxugly.pushit_app.ui.i18n.stringsFor
+import java.util.Locale
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 
@@ -34,6 +42,12 @@ class PushItFirebaseService : FirebaseMessagingService() {
             TAG,
             "Message received from=${message.from.orEmpty()} dataKeys=${message.data.keys.joinToString()}",
         )
+        // Owner alert "an inbound e-mail to your app was refused": a system push with
+        // no Notification row behind it, so it gets its own channel and no inbox refresh.
+        parseInboundRejectionAlert(message.data)?.let {
+            showInboundRejection(it)
+            return
+        }
         val title = message.notification?.title ?: message.data["title"] ?: "PushIT"
         val body = message.notification?.body ?: message.data["message"] ?: ""
         val notificationId = message.data[EXTRA_NOTIFICATION_ID]?.toIntOrNull()
@@ -123,6 +137,39 @@ class PushItFirebaseService : FirebaseMessagingService() {
         AppLogger.info(TAG, "Local notification displayed deepLinkId=${notificationId ?: "none"} app=${appName ?: "-"}")
     }
 
+    private fun showInboundRejection(alert: InboundRejectionAlert) {
+        // Same language as the UI: the user's saved choice, else the device's.
+        val stored = runCatching { TokenStorage(applicationContext).getLanguage() }
+            .onFailure { AppLogger.warn(TAG, "Language unavailable for the inbound alert: ${it.message}") }
+            .getOrNull()
+        val strings = stringsFor(AppLanguage.resolve(stored, Locale.getDefault().language))
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Idempotent; re-creating it also refreshes the channel name after a language change.
+            notificationManager.createNotificationChannel(
+                NotificationChannel(
+                    INBOUND_REJECTED_CHANNEL_ID,
+                    strings.inboundRejectedChannel,
+                    NotificationManager.IMPORTANCE_DEFAULT,
+                ),
+            )
+        }
+        val body = strings.inboundRejectionBody(alert)
+        val builder = NotificationCompat.Builder(this, INBOUND_REJECTED_CHANNEL_ID)
+            .setSmallIcon(resolveSmallIcon())
+            .setContentTitle(strings.inboundRejectionTitle(alert))
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setAutoCancel(true)
+        // Tap opens the app on the inbox (no message to deep-link to).
+        deepLinkPendingIntent(null)?.let(builder::setContentIntent)
+        // One alert per application: a later refusal replaces the previous one.
+        val tag = "inbound_rejected_${alert.applicationId ?: 0}"
+        notificationManager.notify(tag, INBOUND_REJECTED_NOTIFICATION_ID, builder.build())
+        AppLogger.info(TAG, "Inbound rejection alert displayed app=${alert.applicationId ?: "-"} reason=${alert.reason}")
+    }
+
     /** Download an image for the large icon (best-effort; null on any failure).
      * Runs on the FCM background thread, so a short blocking fetch is fine.
      * The URL comes from the (untrusted) push payload, so it is host-allow-listed
@@ -183,6 +230,8 @@ class PushItFirebaseService : FirebaseMessagingService() {
     companion object {
         private const val TAG = "PushIT/FirebaseService"
         const val CHANNEL_ID = "pushit_notifications"
+        const val INBOUND_REJECTED_CHANNEL_ID = "pushit_inbound_rejected"
+        private const val INBOUND_REJECTED_NOTIFICATION_ID = 1
         const val ACTION_NOTIFICATION_RECEIVED = "com.foxugly.pushit_app.NOTIFICATION_RECEIVED"
         // Intent extra carrying the tapped notification's id (string, to match
         // the FCM data key used for the system-tray launch in the background).
