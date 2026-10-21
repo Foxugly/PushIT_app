@@ -170,6 +170,7 @@ class PushItFirebaseService : FirebaseMessagingService() {
         launchIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         if (notificationId != null) {
             launchIntent.putExtra(EXTRA_NOTIFICATION_ID, notificationId.toString())
+            launchIntent.putExtra(EXTRA_DEEP_LINK_NONCE, deepLinkNonce(this))
         }
         return PendingIntent.getActivity(
             this,
@@ -189,5 +190,42 @@ class PushItFirebaseService : FirebaseMessagingService() {
         // Logo-fetch allow-list: the prod backend host only (see MainActivity's
         // PROD_API_BASE_URL = https://pushit-api.foxugly.com/...).
         private const val PROD_LOGO_HOST = "pushit-api.foxugly.com"
+
+        private const val EXTRA_DEEP_LINK_NONCE = "pushit_deep_link_nonce"
+        // Set by the FCM SDK on the launch intent of a notification it rendered itself
+        // (hybrid mode, app in background): that intent cannot carry our nonce.
+        private const val EXTRA_FCM_MESSAGE_ID = "google.message_id"
+        private const val PREFS = "pushit_deep_link"
+        private const val PREF_NONCE = "nonce"
+
+        /** Per-install secret in app-private prefs, put on our own notification PendingIntents. */
+        @Synchronized
+        private fun deepLinkNonce(context: Context): String {
+            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            prefs.getString(PREF_NONCE, null)?.let { return it }
+            val fresh = java.util.UUID.randomUUID().toString()
+            prefs.edit().putString(PREF_NONCE, fresh).apply()
+            return fresh
+        }
+
+        /**
+         * The notification id a launch [intent] deep-links to, or null. MainActivity is
+         * exported, so `notification_id` alone is not trusted (audit M8): it must be a
+         * plain positive id AND come either from our PendingIntent (per-install nonce)
+         * or from a notification rendered by the FCM SDK. The server scopes
+         * GET notifications/<id>/ to the caller's own deliveries anyway.
+         */
+        fun deepLinkNotificationId(context: Context, intent: android.content.Intent?): Int? {
+            val id = com.foxugly.pushit_app.navigation.parseDeepLinkNotificationId(
+                intent?.getStringExtra(EXTRA_NOTIFICATION_ID),
+            ) ?: return null
+            val nonce = intent?.getStringExtra(EXTRA_DEEP_LINK_NONCE)
+            if (nonce != null) {
+                val expected = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                    .getString(PREF_NONCE, null) ?: return null
+                return id.takeIf { java.security.MessageDigest.isEqual(nonce.toByteArray(), expected.toByteArray()) }
+            }
+            return id.takeIf { intent?.getStringExtra(EXTRA_FCM_MESSAGE_ID) != null }
+        }
     }
 }
