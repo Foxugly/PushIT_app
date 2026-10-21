@@ -41,6 +41,7 @@ fun NotificationListScreen(
     onNavigateToFolder: (Int?, String) -> Unit,
     onNavigateToSettings: () -> Unit,
     onAddApplication: () -> Unit,
+    onRefreshLinkedApps: suspend () -> Unit = {},
     refreshTrigger: Int = 0,
 ) {
     var error by remember { mutableStateOf<String?>(null) }
@@ -80,7 +81,12 @@ fun NotificationListScreen(
     ) { paddingValues ->
         PullToRefreshBox(
             isRefreshing = inbox.loading,
-            onRefresh = { scope.launch { refresh() } },
+            onRefresh = {
+                scope.launch {
+                    refresh()
+                    onRefreshLinkedApps()
+                }
+            },
             state = pullToRefreshState,
             modifier = Modifier.fillMaxSize().padding(paddingValues),
         ) {
