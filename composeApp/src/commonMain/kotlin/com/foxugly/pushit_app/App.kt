@@ -155,8 +155,7 @@ fun App(
                 null
             }
             state?.let { inbox.updateLinkedApps(it.linkedApplications) }
-            val hasKnownLinkedApps = state?.linkedApplications?.isNotEmpty() == true
-            session.resetTo(session.routeAfterLogin(hasKnownLinkedApps, tokenStorage.getEnrolmentCode() != null))
+            session.resetTo(session.routeAfterLogin())
         }
     }
 
@@ -211,6 +210,7 @@ fun App(
                         onNavigateToDetail = { id -> session.navigateTo(Screen.NotificationDetail(id)) },
                         onNavigateToFolder = { appId, name -> session.navigateTo(Screen.AppFolder(appId, name)) },
                         onNavigateToSettings = { session.navigateTo(Screen.Settings) },
+                        onAddApplication = { session.navigateTo(Screen.QrScanner) },
                         refreshTrigger = effectiveRefreshTrigger,
                     )
                     is Screen.AppFolder -> AppFolderScreen(

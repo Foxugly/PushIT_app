@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -39,6 +40,7 @@ fun NotificationListScreen(
     onNavigateToDetail: (Int) -> Unit,
     onNavigateToFolder: (Int?, String) -> Unit,
     onNavigateToSettings: () -> Unit,
+    onAddApplication: () -> Unit,
     refreshTrigger: Int = 0,
 ) {
     var error by remember { mutableStateOf<String?>(null) }
@@ -66,6 +68,9 @@ fun NotificationListScreen(
                 title = { Text(strings.notificationsTitle) },
                 colors = pushItTopAppBarColors(),
                 actions = {
+                    IconButton(onClick = onAddApplication) {
+                        Icon(Icons.Default.Add, contentDescription = strings.scanQr)
+                    }
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(Icons.Default.Settings, contentDescription = strings.settingsAction)
                     }
@@ -105,6 +110,12 @@ fun NotificationListScreen(
                         Text(
                             text = strings.noNotifications,
                             style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = strings.addApplicationHint,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         // Recent window may be empty while older messages exist.

@@ -104,11 +104,11 @@ class SessionViewModel(private val authRepository: AuthRepository) {
     }
 
     /**
-     * After a successful login: go scan a QR when the device has no linked app
-     * AND no stored app token, otherwise straight to the inbox.
+     * After a successful login: always the inbox. The scanner is no longer
+     * forced on a device without linked apps; the user opens it with the "+"
+     * of the inbox top bar.
      */
-    fun routeAfterLogin(hasKnownLinkedApps: Boolean, hasStoredAppToken: Boolean): Screen =
-        if (!hasKnownLinkedApps && !hasStoredAppToken) Screen.QrScanner else Screen.NotificationList
+    fun routeAfterLogin(): Screen = Screen.NotificationList
 
     /** After linking via QR: the inbox while still authenticated, else login. */
     fun routeAfterQrLink(): Screen =
