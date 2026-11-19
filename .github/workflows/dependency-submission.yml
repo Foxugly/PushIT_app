@@ -23,9 +23,9 @@ jobs:
   submit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-java@v6
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: '17'
@@ -46,6 +46,6 @@ jobs:
       # Filtrer vaut mieux que rejeter une a une : on ne masque rien, on cesse
       # simplement de declarer comme livre ce qui ne l'est pas -- et une vraie
       # vulnerabilite d'une dependance d'application restera visible.
-      - uses: gradle/actions/dependency-submission@v6
+      - uses: gradle/actions/dependency-submission@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         env:
           DEPENDENCY_GRAPH_INCLUDE_CONFIGURATIONS: ".*[Rr]untimeClasspath"
