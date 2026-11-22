@@ -48,7 +48,7 @@ Two-module project (since the `androidApp`/`composeApp` split): **`:composeApp`*
 
 - **commonMain** — all shared code: Ktor networking, data models, repositories, Compose UI screens
 - **androidMain** — Android platform specifics: `MainActivity`, `PushItFirebaseService`, CameraX + ML Kit QR scanner, `EncryptedSharedPreferences` token storage
-- **iosMain** — iOS platform specifics: `MainViewController`, FCM token handling, QR scanner (manual entry fallback), NSUserDefaults token storage
+- **iosMain** — iOS platform specifics: `MainViewController`, FCM token handling, QR scanner (manual entry fallback), Keychain token storage (secrets) + NSUserDefaults (non-secret prefs)
 - **iosApp/** — SwiftUI entry point that hosts the Compose view via `ComposeView` (UIViewControllerRepresentable)
 
 ### Dependency Wiring
@@ -66,13 +66,13 @@ Cross-platform abstractions use `expect/actual` declarations in `commonMain` wit
 
 ### Navigation
 
-State-driven manual navigation in `App.kt` using `sealed class Screen` + `when`. No navigation library. Screen state is held via `mutableStateOf<Screen?>` — `null` means loading (startup auth check in progress).
+State-driven manual navigation: `sealed class Screen` (`navigation/Screen.kt`) + `when` in `App.kt`. No navigation library. Screen state is held in `SessionViewModel.currentScreen` (`mutableStateOf<Screen?>`) — `null` means loading (startup auth check in progress). Login always lands on the inbox (the QR scanner is no longer forced on a device without linked apps); the **+** in the inbox top bar opens the scanner. The inbox re-reads the linked apps (and their logos) on pull-to-refresh and on resume.
 
 ### Auth Flow
 
 `AuthInterceptor` (Ktor client plugin) attaches `Bearer` token to requests for the API host only (never another origin), except `/auth/*`. On 401, `apiCall` calls `AuthInterceptor.refreshIfNeeded()` (single refresh under `refreshMutex`, with a guard that skips re-refreshing when a concurrent call already rotated the token) and then **replays the original request lambda** — preserving the verb and body, with the fresh token re-attached. If the server rejects the refresh token (401/403), tokens are cleared, `onAuthFailure` calls `SessionViewModel.expireSession()` (Login + a discreet "session expired" note, **no error dialog**) and the failed call surfaces `SessionExpiredException`, which `errorText` maps to `null`; a transport error or 5xx on refresh keeps the session (offline must not sign out) — OPERATIONS.md §3.25. `login` and `refresh` themselves never go through the 401→refresh→replay path. Logout unlinks the device from its apps (`devices/unlink-app/`, best effort) before revoking the refresh token. Transport failures (timeout/offline) surface as `NetworkException`, distinct from HTTP `ApiException`.
 
-### Startup Flow (in App.kt)
+### Startup Flow (`SessionViewModel.start()` / `resolveStartupRoute()`)
 
 1. Check `TokenStorage` for valid access token → `NotificationList`
 2. Else try refresh token → on success (or transient failure: offline/5xx, session kept) `NotificationList`; refused (401/403) → tokens cleared, `Login` with the discreet session-expired note
@@ -93,7 +93,7 @@ Base URL: `https://pushit-api.foxugly.com/api/v1/` (prod-only). Passed into `Pus
   and is refused with an explanation.
 - Enrolment-code refusals (`app_token_*` codes; 403 — older servers sent 401) are never a session
   problem: `apiCall` does **not** refresh/replay on them, and the UI shows a translated message.
-- FCM token rotation: the last token registered with the server is persisted (`TokenStore.lastPushToken`).
+- FCM token rotation: the last token registered with the server is persisted (`TokenStore.getLastPushToken()` / `setLastPushToken()`).
   When FCM rotates it, identify (and link) send the new `push_token` plus `previous_push_token` = the old
   one; the server moves the existing Device to the new token, keeping all its app links and inbox history.
   The stored token is updated only after the server accepted it, and cleared on logout/account deletion.
@@ -114,8 +114,8 @@ All API calls return `Result<T>` via a shared `apiCall` helper.
 
 - **Ktor** — HTTP client with `AuthInterceptor` plugin for JWT
 - **kotlinx.serialization** — JSON serialization (`@Serializable` data classes in `Models.kt`)
-- **multiplatform-settings** — cross-platform key-value storage (Android uses `EncryptedSharedPreferences`, iOS uses `NSUserDefaults`)
-- **Compose Multiplatform 1.10.3** / **Kotlin 2.3.10**
+- Storage is platform-native: Android `EncryptedSharedPreferences`, iOS Keychain (tokens) + `NSUserDefaults` (prefs). `multiplatform-settings` is still declared in the catalog/`composeApp` but no source uses it.
+- **Compose Multiplatform 1.12.2** / **Kotlin 2.4.21** / AGP 9.5.0; compileSdk 37 (minor 1), targetSdk 36, minSdk 24
 
 ## Crash reporting (Sentry)
 
