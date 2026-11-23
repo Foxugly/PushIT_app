@@ -76,6 +76,8 @@ kotlin {
             implementation(libs.androidx.camera.camera2)
             implementation(libs.androidx.camera.lifecycle)
             implementation(libs.androidx.camera.view)
+            // Security floor for CameraX's transitive Guava (GHSA-xxph-c9ww-hj94), see libs.versions.toml.
+            implementation(libs.guava)
             implementation(libs.mlkit.barcode.scanning)
             implementation(libs.androidx.security.crypto)
         }
