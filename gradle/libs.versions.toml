@@ -24,9 +24,9 @@ multiplatformSettings = "1.3.0"
 androidxCamera = "1.7.0"
 # Guava is not used directly: CameraX 1.7 (via media3-common 1.9) pulls 33.3.1-android,
 # hit by GHSA-xxph-c9ww-hj94 (high, fixed in 33.7.2). Remove once CameraX/media3 ship >= 33.7.2.
-guava = "33.7.2-android"
+guava = "33.8.0-android"
 mlkitBarcode = "17.3.0"
-firebaseBom = "33.12.0"
+firebaseBom = "35.2.0"
 androidxSecurityCrypto = "1.1.0"
 kotlinxCoroutines = "1.11.0"
 googleServices = "4.6.0"
